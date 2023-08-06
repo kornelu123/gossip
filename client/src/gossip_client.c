@@ -10,6 +10,7 @@
 
 #define SIZE 1024
 #define OUT_BUF_LENGTH 1024
+#define IN_BUF_LENGTH 1024
 
 void set_terminal_properties(){
   static struct termios oldt, newt;
@@ -19,10 +20,19 @@ void set_terminal_properties(){
   tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 }
 
+void *con_recv(void *ptr){
+  int *sock_id = (int *)ptr;
+  char in_buf[IN_BUF_LENGTH];
+  while(1){
+   if(recv(*sock_id, &in_buf, IN_BUF_LENGTH, 0) > 0){
+     printf("%s", in_buf);
+   }
+  }
+}
+
 void *con_send(void *ptr){
   set_terminal_properties();
   int *sock_id = (int*)ptr; 
-  char serv_resp[SIZE];
   char input = 0;  
   char out_buf[OUT_BUF_LENGTH];
   while(input != 'q'){
@@ -59,13 +69,14 @@ int main(){
    
   
   pthread_t transmiter;
-  pthread_t reciever;
+  pthread_t receiver;
   int iret1, iret2;
   
   iret1 = pthread_create(&transmiter, NULL, con_send, (void *)&sock_id);
+  iret2 = pthread_create(&receiver,  NULL, con_recv, (void *)&sock_id);
 
   pthread_join(transmiter, NULL);
-  
+  pthread_join(receiver,   NULL);
   close(sock_id);
   return 0;
 }

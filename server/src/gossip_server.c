@@ -5,42 +5,71 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <string.h>
+#include <poll.h>
 
-void start_serv();
+#define SERV_SIZE 1024
+
+int *create_socket();
+ 
+void *pthread_routine(void* ptr);
+
+char *msg = "Kurwa \n";
+
+int client_sock[11];
 
 int main(){
-  start_serv();
+  int server_socket = create_socket();
 
+  
+  close(server_socket);
   return 0;
 }
 
-void start_serv(){
-  int sock_id ;
-  int client_id;
+int *create_socket(){
+  int socket_id;
   struct sockaddr_in serv_addr;
-  struct sockaddr_in cli_addr;
-  socklen_t addr_size;
-  int cli_len = sizeof(cli_addr);
-  char in_buf[1024];
-  char ping;
-
-  sock_id = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port   = htons(8080);
   serv_addr.sin_addr.s_addr = INADDR_ANY;
 
-  bind(sock_id, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
-
-  while(listen(sock_id, 1024));
-
-  client_id = accept(sock_id, (struct sockaddr *)&cli_addr, &cli_len);
-
-  while(1){
-    if(read(client_id, &in_buf, 1024)){
-      printf("%s",in_buf);
-    }
+  if((socket_id = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1){
+    perror("Socket error ");
+    exit(1);
   }
-  close(sock_id);
+  
+  if(bind(socket_id, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1){
+    perror("Bind error ");
+    exit(1);
+  }
+
+  if(listen(socket_id, 5) == -1){
+    perror("Listen error ");
+    exit(1);
+  }
+  printf("Server started \n"); 
+  return &socket_id;
 }
 
+void *poll_clients(void* ptr){
+  int *new_socket_id = (int *)ptr;
+  free(ptr);
+
+  struct pollfd pollfds[11];
+  pollfds[0].fd = *new_socket_id;
+  pollfds[0].events = POLLIN | POLLPRI;
+  int used_clients = 0;
+
+  while(1){
+     int pool_res = poll(pollfds, used_clients +1, 500);
+     if(pool_res > 0){
+       if(pollfds[0].revents & POLLIN){
+	 struct sockaddr_in cliaddr;
+	 int addrlen = sizeof(cliaddr);
+	 int client_socket = 
+  	}
+
+  close(new_socket_id);
+  return NULL;
+}

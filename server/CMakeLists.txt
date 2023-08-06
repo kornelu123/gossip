@@ -13,6 +13,9 @@ file(GLOB ALL_SRC
   ${PROJECT_SOURCE_DIR}/inc/*.h
   ${PROJECT_SOURCE_DIR}/src/*.c
 )
+
+add_compile_options(-Wall -Wextra)
+ 
 add_executable(gossip_server ${ALL_SRC})
 
 target_link_libraries(gossip_server)

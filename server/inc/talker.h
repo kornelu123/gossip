@@ -9,11 +9,8 @@
 #include <unistd.h>
 #include <pthread.h>
 
-typedef struct{
-  int sock_id,
-  int client_id,
-  sockaddr_in serv_addr,
-  sockaddr_in cli_addr
-}talker;
+void *reader(void* ptr);
+
+void *writer(void* ptr);
 
 #endif

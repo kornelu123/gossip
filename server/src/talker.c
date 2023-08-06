@@ -6,11 +6,12 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "talker.h"
+#include <semaphore.h>
 
-void send_data(talker talk){
-  
+void *writer(void *ptr){
+
 }
 
-void recv_data(talker talk){
-
+void *reader(void *ptr){
+  
 }
