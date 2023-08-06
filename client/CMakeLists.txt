@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(gossip)
+project(gossip_client)
 
 set(CMAKE_CXX_STANDARD_17)
 
@@ -13,8 +13,6 @@ file(GLOB ALL_SRC
   ${PROJECT_SOURCE_DIR}/inc/*.h
   ${PROJECT_SOURCE_DIR}/src/*.c
 )
-add_executable(gossip ${ALL_SRC})
+add_executable(gossip_client ${ALL_SRC})
 
-find_library(LIBSSH libssh.so)
-
-target_link_libraries(gossip ${LIBSSH})
+target_link_libraries(gossip_client)
