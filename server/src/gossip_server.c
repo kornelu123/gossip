@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -6,30 +7,82 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
-#include <poll.h>
+#include <sys/epoll.h>
 
 #define SERV_SIZE 1024
+#define MAX_EVENTS 10
 
-int *create_socket();
+int socket_id;
+struct sockaddr_in serv_addr;
+int serv_addr_len;
+
+char in_buf[1024];
+
+int create_socket();
  
-void *pthread_routine(void* ptr);
-
 char *msg = "Kurwa \n";
 
-int client_sock[11];
-
 int main(){
-  int server_socket = create_socket();
+  int server_socket, conn_sock, nfds, epollfd;
+  server_socket = create_socket();
+  struct epoll_event ev, events[MAX_EVENTS];
+  serv_addr_len = sizeof(serv_addr);
 
+  epollfd = epoll_create1(0);
+  if(epollfd == -1){
+    perror("epoll_create1");
+    exit(1);
+  }
+
+  ev.events = EPOLLIN;
+  ev.data.fd = server_socket;
+
+  if(epoll_ctl(epollfd, EPOLL_CTL_ADD, server_socket, &ev) == -1){
+    perror("epoll_ctl : listen_sock");
+    exit(1);
+  }
+
+  for(;;){
+    nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+    if(nfds == -1){
+      perror("epoll_wait");
+      exit(1);
+    }
+    for(int n=0; n<nfds; ++n){
+      if(events[n].data.fd == server_socket){
+        conn_sock = accept(server_socket, ( struct sockaddr *) &serv_addr, 
+           (socklen_t *)&serv_addr_len);
+        if(conn_sock == -1){
+          perror("accept");
+          exit(1);
+        }
+
+        int status = fcntl(conn_sock, F_SETFL, fcntl(socket_id, F_GETFL, 0) | O_NONBLOCK);
+        if(status == -1){
+          perror("fctnl");
+          exit(1); 
+        }
+        ev.events = EPOLLIN | EPOLLET;
+        ev.data.fd = conn_sock;
+        if(epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock,
+              &ev) == -1){
+          perror("epoll_ctl: conn_sock");
+          exit(1);
+        }
+      } else {
+	if(read(conn_sock, in_buf, 1024) > 0){
+	  write(conn_sock, in_buf, 1024);
+	  printf("%d : %s", conn_sock ,in_buf);
+	}
+      }
+    }
+  }
   
   close(server_socket);
   return 0;
 }
 
-int *create_socket(){
-  int socket_id;
-  struct sockaddr_in serv_addr;
-
+int create_socket(){
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port   = htons(8080);
   serv_addr.sin_addr.s_addr = INADDR_ANY;
@@ -49,27 +102,5 @@ int *create_socket(){
     exit(1);
   }
   printf("Server started \n"); 
-  return &socket_id;
-}
-
-void *poll_clients(void* ptr){
-  int *new_socket_id = (int *)ptr;
-  free(ptr);
-
-  struct pollfd pollfds[11];
-  pollfds[0].fd = *new_socket_id;
-  pollfds[0].events = POLLIN | POLLPRI;
-  int used_clients = 0;
-
-  while(1){
-     int pool_res = poll(pollfds, used_clients +1, 500);
-     if(pool_res > 0){
-       if(pollfds[0].revents & POLLIN){
-	 struct sockaddr_in cliaddr;
-	 int addrlen = sizeof(cliaddr);
-	 int client_socket = 
-  	}
-
-  close(new_socket_id);
-  return NULL;
+  return socket_id;
 }

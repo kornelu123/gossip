@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -52,6 +53,7 @@ void *con_send(void *ptr){
 	break;
     }
   }
+  exit(0);
 }
 
 int main(){
