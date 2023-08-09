@@ -47,7 +47,6 @@ void *con_send(void *ptr){
 	  if(out_buf[i] == '\n')break;
 	}
 	send(*sock_id, out_buf,sizeof(out_buf), 0); 
-	printf("%s", out_buf);
 	break;
       default:
 	break;
