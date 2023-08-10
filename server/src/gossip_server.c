@@ -4,12 +4,15 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <string.h>
+#include <fcntl.h>
 #include "gossip_server.h"
 
 #define SERVPORT "8080"
 #define QUEQUELEN 10
 #define CLIENTCOUNT 1024
+#define BUFLEN CLIENTCOUNT
 
 struct client_table cli_tab;
 pthread_mutex_t cli_tab_mut;
@@ -18,6 +21,7 @@ int main(){
   struct addrinfo hints;
   struct addrinfo *servinfo;
   int status, sock_fd;
+  pthread_t tid[2];
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_INET;
@@ -46,6 +50,18 @@ int main(){
     exit(1);
   } 
 
+  if(( status = fcntl(sock_fd, F_SETFL, O_NONBLOCK)) == -1){
+    fprintf(stderr, "fcntl error : %s \n", gai_strerror(status));
+    exit(1);
+  }
+
+  pthread_create(&tid[0], NULL, listener, &cli_tab);
+  pthread_create(&tid[1], NULL, talker, &cli_tab);
+
+  pthread_join(tid[0], NULL);
+  pthread_join(tid[1], NULL);
+  printf("Shutting down server \n");
+  close(cli_tab.sock_fd);
   freeaddrinfo(servinfo);
   return 0;
 }
@@ -54,7 +70,8 @@ void *listener(void *ptr){
     struct client_table *cli_tab = (struct client_table *)ptr;
     int res;
     struct sockaddr sock_addr;
-    int cli_fd, sock_fd;
+    int  sock_fd;
+    socklen_t socklen;
     pthread_mutex_lock(&cli_tab_mut);
     sock_fd = cli_tab->sock_fd;
     pthread_mutex_unlock(&cli_tab_mut);
@@ -64,25 +81,28 @@ void *listener(void *ptr){
         fprintf(stderr, "listen error : %s \n", gai_strerror(res));
         exit(1); 
       }
-      int res = accept(sock_fd, (struct sockaddr*) &sock_addr, (socklen_t *)sizeof sock_addr);
-      if(res == -1){
-	fprintf(stderr, "accept error : %s \n", gai_strerror(res));
-	exit(1);
+      socklen = sizeof ( sock_addr );
+      int res = accept(sock_fd, NULL, NULL);
+      if((res == -1) && (errno & (EAGAIN | EWOULDBLOCK) )){
+        if(errno & (EAGAIN | EWOULDBLOCK)) continue;
+        fprintf(stderr, "accept error : %s \n", gai_strerror(res));
+        exit(1);
       }
+      printf("connected from fd : %d", res);
       pthread_mutex_lock(&cli_tab_mut);
       cli_tab->client_fd[cli_tab->cur_client].fd = res;
-      cli_tab->client_fd[cli_tab->cur_client++].event = POLLIN ;
+      cli_tab->client_fd[cli_tab->cur_client++].events = POLLIN ;
       pthread_mutex_unlock(&cli_tab_mut);
     }
   }
 
 void *talker(void *ptr){
+  char in_buf[BUFLEN];
   struct client_table *cli_tab = (struct client_table*)ptr;
   int sock_fd;
   int curr_count, status;
-  struct client_table cli_tab_cpy;
-  pollfd *poll_tab;
-  poll_tab = (pollfd *)calloc(1, sizeof(pollfd));
+  struct pollfd *poll_tab;
+  poll_tab = (struct pollfd *)calloc(1, sizeof(struct pollfd));
   pthread_mutex_lock(&cli_tab_mut);
   sock_fd = cli_tab->sock_fd;
   pthread_mutex_unlock(&cli_tab_mut);
@@ -90,27 +110,36 @@ void *talker(void *ptr){
   while(1){
     pthread_mutex_lock(&cli_tab_mut);
     curr_count = cli_tab->cur_client;
-    poll_tab = realloc(poll_tab, curr_count*(sizeof pollfd));
+    poll_tab = realloc(poll_tab, curr_count*(sizeof (struct pollfd)));
     for(int i=0;i<curr_count;i++){
       poll_tab[i] = cli_tab->client_fd[curr_count];
     }
     pthread_mutex_unlock(&cli_tab_mut);
 
-    status = poll(poll_tab, 1, 25);
+    status = poll(poll_tab, curr_count, 25);
     if(status == -1){
-      fprintf(stderr, "poll error : %s \n", gai_strerror(res));
+      fprintf(stderr, "poll error : %s \n", gai_strerror(status));
       exit(1);
     }
     if(status == 0){
       break;
     }
-
-    for(int i=0 ;i < status ;i++){ 
-      
+    int rec_st;
+    for(int i=0 ;i < curr_count ;i++){ 
+      if(poll_tab[i].revents & POLLIN){
+        status--;
+        rec_st = recv(poll_tab[i].fd, in_buf, BUFLEN, 0);
+        if(!rec_st){
+          pthread_mutex_lock(&cli_tab_mut);
+          for(int n = i; n<curr_count; n++){
+            cli_tab->client_fd[curr_count] = cli_tab->client_fd[curr_count+1];
+          }
+          cli_tab->cur_client--;
+          pthread_mutex_unlock(&cli_tab_mut);
+        }
+        printf("in buf : %s \n", in_buf);
+        if(!status) break;
+      }
     }
-
   }
-
-
-  poll(
 }
