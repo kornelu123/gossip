@@ -2,6 +2,7 @@
 #define GOSSIP_SERVER_H
 
 #include <sys/poll.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 typedef struct client_table{
@@ -11,6 +12,8 @@ typedef struct client_table{
 }client_table;
 
 void *listener(void *ptr);
+
+void *talker(void *ptr);
 
 int main();
 
