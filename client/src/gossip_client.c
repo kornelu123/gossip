@@ -8,10 +8,14 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <termios.h>
+#include "proto_cipa.h"
 
 #define SIZE 1024
 #define OUT_BUF_LENGTH 1024
 #define IN_BUF_LENGTH 1024
+
+char uname[MAX_UNAME_LEN];
+char passwd[MAX_PASSWD_LEN];
 
 void set_terminal_properties(){
   static struct termios oldt, newt;
@@ -56,6 +60,11 @@ void *con_send(void *ptr){
 }
 
 int main(){
+  printf("Enter username : \n");
+  fgets( &uname[0], MAX_UNAME_LEN, stdin);
+  printf("Enter password : \n");
+  fgets( &passwd[0], MAX_PASSWD_LEN, stdin);
+  printf("%s %s", uname, passwd);
   char* addr = "127.0.0.1";
   int sock_id = socket(AF_INET ,SOCK_STREAM , IPPROTO_TCP);
   struct sockaddr_in serv_addr;
