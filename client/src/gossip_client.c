@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -38,22 +39,31 @@ void *con_recv(void *ptr){
 void *con_send(void *ptr){
   set_terminal_properties();
   int *sock_id = (int*)ptr; 
+  struct cipa_packet pack;
   char input = 0;  
+  int res;
   char out_buf[OUT_BUF_LENGTH];
   while(input != 'q'){
     input = fgetc(stdin);
     switch(input){
       case 'i':
-	int i;
-	printf("Please enter your message :\n");
-	for(i=0 ; i<OUT_BUF_LENGTH ; i++){
-	  out_buf[i] = fgetc(stdin);
-	  if(out_buf[i] == '\n')break;
-	}
-	send(*sock_id, out_buf,sizeof(out_buf), 0); 
-	break;
+        int i;
+        for(i=0 ; i<OUT_BUF_LENGTH ; i++){
+           out_buf[i] = fgetc(stdin);
+           if(out_buf[i] == '\n')break;
+        }
+        send(*sock_id, out_buf,sizeof(out_buf), 0); 
+        break;
+      case 'r':
+       pack = register_pack(uname, passwd);
+       printf("%d", pack.header);
+       if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0 ){
+          fprintf(stderr, "send error : %s \n", gai_strerror(res));
+          exit(1);
+       }
+	     break;
       default:
-	break;
+	      break;
     }
   }
   exit(0);
@@ -64,7 +74,6 @@ int main(){
   fgets( &uname[0], MAX_UNAME_LEN, stdin);
   printf("Enter password : \n");
   fgets( &passwd[0], MAX_PASSWD_LEN, stdin);
-  printf("%s %s", uname, passwd);
   char* addr = "127.0.0.1";
   int sock_id = socket(AF_INET ,SOCK_STREAM , IPPROTO_TCP);
   struct sockaddr_in serv_addr;

@@ -8,9 +8,18 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <poll.h>
+#include <pthread.h>
 #include "proto_cipa.h"
 
 #define PORT "8080"
+
+void *parser_t(void *ptr){
+  struct cipa_packet *pack = (struct cipa_packet *)ptr;
+  parse_packet(pack);
+  pthread_exit(NULL);
+}
+
+struct cipa_packet pack;
 
 // Get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
@@ -101,13 +110,13 @@ void del_from_pfds(struct pollfd pfds[], int i, int *fd_count)
 // Main
 int main(void)
 {
+    memset(&pack, 0 ,1024);
+    int res;
     int listener;     // Listening socket descriptor
-
+    pthread_t parser;
     int newfd;        // Newly accept()ed socket descriptor
     struct sockaddr_storage remoteaddr; // Client address
     socklen_t addrlen;
-
-    char buf[256];    // Buffer for client data
 
     char remoteIP[INET6_ADDRSTRLEN];
 
@@ -168,7 +177,7 @@ int main(void)
                     }
                 } else {
                     // If not the listener, we're just a regular client
-                    int nbytes = recv(pfds[i].fd, buf, sizeof buf, 0);
+                    int nbytes = recv(pfds[i].fd, &pack, sizeof pack, 0);
 
                     int sender_fd = pfds[i].fd;
 
@@ -186,7 +195,7 @@ int main(void)
                         del_from_pfds(pfds, i, &fd_count);
 
                     } else {
-                      
+                      parse_packet(&pack);
                     }
                 } // END handle data from client
             } // END got ready-to-read from poll()

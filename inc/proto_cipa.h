@@ -13,11 +13,11 @@
 
 typedef struct cipa_packet{
   uint8_t header;
-  uint8_t content[1023];
+  char content[1023];
 }cipa_packet;
 
 struct cipa_packet register_pack(char *uname, char *passwd);
 
-void parse_packet(cipa_packet pack);
+void parse_packet(struct cipa_packet *pack);
 
 #endif
