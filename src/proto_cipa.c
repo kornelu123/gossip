@@ -7,7 +7,7 @@
 
 char *db_file = "users.txt";
 
-struct user users[1024]
+struct user users[1024];
 
 struct cipa_packet register_pack(char *uname, char *passwd){
   struct cipa_packet pack;
@@ -30,7 +30,7 @@ struct cipa_packet register_pack(char *uname, char *passwd){
 struct cipa_packet login_pack(char *uname, char *passwd){
   struct cipa_packet pack;
   memset(&pack, 0, 1024);
-  pack.header = H_LOG;
+  pack.header = H_LOGIN;
 
   int i;
   for(i=0; uname[i] != '\0'; i++){
@@ -47,19 +47,21 @@ struct cipa_packet login_pack(char *uname, char *passwd){
 
 void parse_packet(struct cipa_packet *pack, int user_fd){
   uint8_t header = pack->header;
+  char uname[MAX_UNAME_LEN];
+  char passwd[MAX_PASSWD_LEN];
+  int i;
+  int k;
+  FILE* db_app  = fopen(db_file,"a+");
   switch(header){
     case H_REG:
+      i=0;
+      k=0;
       printf("Got register header\n");
-      int i = 0;
-      FILE* db_app  = fopen(db_file,"a+");
-      char uname[MAX_UNAME_LEN];
-      char passwd[MAX_PASSWD_LEN];
       while(pack->content[i] != '\n'){
         uname[i] = pack->content[i];
         i++;
       }
       i++;
-      int k=0;
       while(pack->content[i] != '\0'){
         passwd[k] = pack->content[i];
         k++;i++;
@@ -72,18 +74,15 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
       }
       memset(&pack, 0 ,1024);
       break;
-    case H_LOG:
+    case H_LOGIN:
+      i=0;
+      k=0;
       printf("Got login header\n");
-      int i = 0;
-      FILE* db_app  = fopen(db_file,"a+");
-      char uname[MAX_UNAME_LEN];
-      char passwd[MAX_PASSWD_LEN];
       while(pack->content[i] != '\n'){
         uname[i] = pack->content[i];
         i++;
       }
       i++;
-      int k=0;
       while(pack->content[i] != '\0'){
         passwd[k] = pack->content[i];
         k++;i++;
