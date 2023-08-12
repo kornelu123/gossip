@@ -15,7 +15,6 @@
 
 void *parser_t(void *ptr){
   struct cipa_packet *pack = (struct cipa_packet *)ptr;
-  parse_packet(pack);
   pthread_exit(NULL);
 }
 
@@ -195,7 +194,7 @@ int main(void)
                         del_from_pfds(pfds, i, &fd_count);
 
                     } else {
-                      parse_packet(&pack);
+                      parse_packet(&pack, pfds[i].fd);
                     }
                 } // END handle data from client
             } // END got ready-to-read from poll()

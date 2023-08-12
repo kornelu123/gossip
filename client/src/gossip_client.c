@@ -70,10 +70,19 @@ void *con_send(void *ptr){
 }
 
 int main(){
-  printf("Enter username : \n");
-  fgets( &uname[0], MAX_UNAME_LEN, stdin);
-  printf("Enter password : \n");
-  fgets( &passwd[0], MAX_PASSWD_LEN, stdin);
+  char inp = 0;
+  int count =0;
+  printf("Enter username : ");
+  do{
+    inp = fgetc(stdin);
+    uname[count++] = inp;
+  }while(inp != '\n');
+  count = 0;
+  printf("\nEnter password : ");
+  do{
+    inp = fgetc(stdin);
+    passwd[count++] = inp;
+  }while(inp != '\n');
   char* addr = "127.0.0.1";
   int sock_id = socket(AF_INET ,SOCK_STREAM , IPPROTO_TCP);
   struct sockaddr_in serv_addr;
