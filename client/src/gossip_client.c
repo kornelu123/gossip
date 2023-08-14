@@ -55,13 +55,19 @@ void *con_send(void *ptr){
         send(*sock_id, out_buf,sizeof(out_buf), 0); 
         break;
       case 'r':
-       pack = register_pack(uname, passwd);
-       printf("%d", pack.header);
-       if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0 ){
-          fprintf(stderr, "send error : %s \n", gai_strerror(res));
-          exit(1);
-       }
+        pack = register_pack(uname, passwd);
+        if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0 ){
+           fprintf(stderr, "send error : %s \n", gai_strerror(res));
+           exit(1);
+        }
 	     break;
+      case 'l':
+        pack = login_pack(uname, passwd); 
+        if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0 ){
+           fprintf(stderr, "send error : %s \n", gai_strerror(res));
+           exit(1);
+        }
+        break;
       default:
 	      break;
     }

@@ -20,7 +20,17 @@ typedef struct cipa_packet{
 typedef struct user{
   char uname[MAX_UNAME_LEN];
   int  user_fd;
+  int  talker_fd;
 }user;
+
+typedef struct user_list{
+  user users[1024];
+  int cur_count;
+}user_list;
+
+void ulist_init();
+
+int userlist_add(int user_fd, char *uname);
 
 struct cipa_packet register_pack(char *uname, char *passwd);
 

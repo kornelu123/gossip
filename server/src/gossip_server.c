@@ -109,6 +109,7 @@ void del_from_pfds(struct pollfd pfds[], int i, int *fd_count)
 // Main
 int main(void)
 {
+    ulist_init();
     memset(&pack, 0 ,1024);
     int res;
     int listener;     // Listening socket descriptor

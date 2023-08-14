@@ -4,10 +4,88 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include "database.h"
 
-char *db_file = "users.txt";
+#define SUCCESFUL_LOG 0
+#define ALREADY_LOGGED 1
 
-struct user users[1024];
+struct user_list u_list;
+
+void ulist_init(){
+  u_list.cur_count = 0;
+}
+
+void parse_packet(struct cipa_packet *pack, int user_fd){
+  uint8_t header = pack->header;
+  char uname[MAX_UNAME_LEN];
+  char passwd[MAX_PASSWD_LEN];
+  int i;
+  int k;
+  switch(header){
+    case H_REG:
+      i=0;
+      k=0;
+      printf("Got register header\n");
+      while(pack->content[i] != '\n'){
+        uname[i] = pack->content[i];
+        i++;
+      }
+      i++;
+      while(pack->content[i] != '\0'){
+        passwd[k] = pack->content[i];
+        k++;i++;
+      }
+      if(search_db(uname, passwd)){
+        add_user(uname, passwd);
+        send(user_fd, "Registered succesfully \n", 25, 0);
+      }else{
+        send(user_fd, "This user already exists \n", 28, 0); 
+      }
+      memset(&pack, 0 ,1024);
+      break;
+    case H_LOGIN:
+      i=0;
+      k=0;
+      printf("Got login header\n");
+      while(pack->content[i] != '\n'){
+        uname[i] = pack->content[i];
+        i++;
+      }
+      i++;
+      while(pack->content[i] != '\0'){
+        passwd[k] = pack->content[i];
+        k++;i++;
+      }
+      if(search_db(uname, passwd)){
+        send(user_fd, "Username or password is incorrect \n",35, 0);
+      }else{
+        if(userlist_add(user_fd, uname) == ALREADY_LOGGED){
+           send(user_fd, "User already logged \n", 21, 0);
+        }else{
+           send(user_fd, "Succesfully logged in \n", 23, 0);
+        }
+      }
+      memset(&pack, 0 ,1024);
+      break;
+    default:
+      break;
+  }
+}
+
+int userlist_add(int user_fd, char *uname){
+  for(int i=0; i < u_list.cur_count; i++){
+    if(!(strcmp(uname, u_list.users[i].uname))){
+      return ALREADY_LOGGED;
+    }
+  }
+  strcpy(u_list.users[u_list.cur_count].uname, uname);
+  u_list.users[u_list.cur_count++].user_fd = user_fd;
+  return SUCCESFUL_LOG;
+}
+
+void userlist_remove(int user_fd){
+  for(int i=0
+}
 
 struct cipa_packet register_pack(char *uname, char *passwd){
   struct cipa_packet pack;
@@ -26,7 +104,6 @@ struct cipa_packet register_pack(char *uname, char *passwd){
 
   return pack;
 }
-
 struct cipa_packet login_pack(char *uname, char *passwd){
   struct cipa_packet pack;
   memset(&pack, 0, 1024);
@@ -43,77 +120,4 @@ struct cipa_packet login_pack(char *uname, char *passwd){
   pack.content[i++] = '\0';
 
   return pack;
-}
-
-void parse_packet(struct cipa_packet *pack, int user_fd){
-  uint8_t header = pack->header;
-  char uname[MAX_UNAME_LEN];
-  char passwd[MAX_PASSWD_LEN];
-  int i;
-  int k;
-  FILE* db_app  = fopen(db_file,"a+");
-  switch(header){
-    case H_REG:
-      i=0;
-      k=0;
-      printf("Got register header\n");
-      while(pack->content[i] != '\n'){
-        uname[i] = pack->content[i];
-        i++;
-      }
-      i++;
-      while(pack->content[i] != '\0'){
-        passwd[k] = pack->content[i];
-        k++;i++;
-      }
-      if(search_db(uname, passwd)){
-        fprintf(db_app,"user:%s;passwd:%s",uname,passwd);
-        fflush(db_app);
-      }else{
-        send(user_fd, "This user already exists\n", 26, 0); 
-      }
-      memset(&pack, 0 ,1024);
-      break;
-    case H_LOGIN:
-      i=0;
-      k=0;
-      printf("Got login header\n");
-      while(pack->content[i] != '\n'){
-        uname[i] = pack->content[i];
-        i++;
-      }
-      i++;
-      while(pack->content[i] != '\0'){
-        passwd[k] = pack->content[i];
-        k++;i++;
-      }
-      if(search_db(uname, passwd)){
-        send(user_fd, "Username or password is incorrect",33, 0);
-      }else{
-        
-      }
-      memset(&pack, 0 ,1024);
-      
-    default:
-      break;
-  }
-}
-
-int search_db(char *uname, char *passwd){
-  FILE* db_read = fopen(db_file,"r");
-  if(db_read == NULL){
-    fprintf(stderr, "fopen : %s", gai_strerror(db_file));
-    exit(1);
-  }
-  char* lookup = malloc(( sizeof (char))*1024);
-  sprintf(lookup, "user:%s;passwd:%s", uname, passwd);
-  char *lineptr = NULL;
-  size_t size = 0;
-  ssize_t chars;
-  while((chars = getline(&lineptr, &size, db_read)) >= 0){
-    if(!(strcmp(lookup,lineptr))){
-      return 0;
-    }
-  }
-  return 1;
 }
