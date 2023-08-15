@@ -8,6 +8,7 @@
 
 #define SUCCESFUL_LOG 0
 #define ALREADY_LOGGED 1
+
 #define SUCCESFUL_CONN 0
 #define CONN_ERROR 1
 #define USER_NOT_FOUND 2
@@ -90,6 +91,7 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
       break;
     case H_MESS:
       handle_mess(user_fd, pack->content);
+      memset(&pack, 0 ,1024);
       break;
     default:
       break;
@@ -110,8 +112,7 @@ int userlist_add(int user_fd, char *uname){
 void userlist_remove(int user_fd){
   int i;
   for(i=0; i<u_list.cur_count;i++){
-    if(u_list.users[i].user_fd == user_fd);
-    break;
+    if(u_list.users[i].user_fd == user_fd) break;
   }
   u_list.users[i] = u_list.users[--u_list.cur_count];
 }
@@ -119,11 +120,12 @@ void userlist_remove(int user_fd){
 int handle_conn(int user_fd, char*uname){
   int i;
   for(i=0;i<u_list.cur_count;i++){
-    if(u_list.users[i].user_fd = user_fd) break;
+    if(u_list.users[i].user_fd == user_fd) break;
   }
   for(int j=0;j<u_list.cur_count;j++){
     if(!strcmp(uname, u_list.users[j].uname)){
       u_list.users[i].talker_fd = u_list.users[j].user_fd;
+      u_list.users[j].talker_fd = u_list.users[i].user_fd;
       char mess[1024];
       sprintf(mess, "Connected from : %s", u_list.users[i].uname);
       send(u_list.users[i].talker_fd, mess, sizeof(mess), 0);
@@ -192,6 +194,26 @@ struct cipa_packet connect_pack(char *uname){
   do{
     pack.content[i] = uname[i];
   }while(uname[i++] !=  '\n');
+
+  return pack;
+}
+
+struct cipa_packet mess_pack(char *uname, char *mess){
+  struct cipa_packet pack;
+  memset(&pack, 0, 1024);
+  pack.header = H_MESS;
+
+  int i=0;
+  do{
+    pack.content[i] = uname[i++];
+  }while(uname[i] != '\n');
+  uname[i++] = ':';
+
+  int k=0;
+  do{
+    pack.content[i++] = mess[k++];
+  }while(pack.content[i] != '\n' && i < 987);
+  uname[i] = '\0';
 
   return pack;
 }

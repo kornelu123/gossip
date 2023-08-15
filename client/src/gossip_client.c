@@ -14,6 +14,7 @@
 #define SIZE 1024
 #define OUT_BUF_LENGTH 1024
 #define IN_BUF_LENGTH 1024
+#define MAX_MESS_LENGTH MAX_PASSWD_LEN
 
 char uname[MAX_UNAME_LEN];
 char passwd[MAX_PASSWD_LEN];
@@ -28,11 +29,10 @@ void set_terminal_properties(){
 
 void *con_recv(void *ptr){
   int *sock_id = (int *)ptr;
-  char in_buf[IN_BUF_LENGTH];
   while(1){
+  char in_buf[IN_BUF_LENGTH];
    if(recv(*sock_id, &in_buf, IN_BUF_LENGTH, 0) > 0){
      printf("%s", in_buf);
-     memset(&in_buf, 0, IN_BUF_LENGTH);
    }
   }
 }
@@ -49,11 +49,12 @@ void *con_send(void *ptr){
     switch(input){
       case 'i':
         int i;
-        for(i=0 ; i<OUT_BUF_LENGTH ; i++){
-           pack.content[i] = fgetc(stdin);
-           if(pack.content[i] == '\n')break;
+        char mess[MAX_MESS_LENGTH];
+        for(i=0;i<MAX_MESS_LENGTH;i++){
+          if((mess[i] = fgetc(stdin)) == '\n') break;
         }
-        pack.header = H_MESS;
+        mess[i-1] = '\0';
+        pack = mess_pack(uname, mess);
         send(*sock_id, &pack,sizeof(pack), 0); 
         break;
       case 'r':

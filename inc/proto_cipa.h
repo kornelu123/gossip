@@ -45,6 +45,8 @@ struct cipa_packet login_pack(char *uname, char *passwd);
 
 struct cipa_packet connect_pack(char *uname);
 
+struct cipa_packet mess_pack(char *uname, char *mess);
+
 void parse_packet(struct cipa_packet *pack, int user_fd);
 
 int search_db(char *uname, char *passwd);

@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-char *db_file = "users.txt";
+const char *db_file = "users.txt";
 
 int search_db(char *uname, char *passwd){
   FILE* db_read = fopen(db_file,"r");
