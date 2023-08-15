@@ -10,6 +10,7 @@
 #define H_REG 2
 #define H_MESS 3
 #define H_LOGOUT 4
+#define H_CONN 5
 
 
 typedef struct cipa_packet{
@@ -32,9 +33,17 @@ void ulist_init();
 
 int userlist_add(int user_fd, char *uname);
 
+void userlist_remove(int user_fd);
+
+int handle_conn(int user_fd, char *uname);
+
 struct cipa_packet register_pack(char *uname, char *passwd);
 
+int handle_mess(int user_fd, char *mess);
+
 struct cipa_packet login_pack(char *uname, char *passwd);
+
+struct cipa_packet connect_pack(char *uname);
 
 void parse_packet(struct cipa_packet *pack, int user_fd);
 

@@ -8,11 +8,17 @@
 
 #define SUCCESFUL_LOG 0
 #define ALREADY_LOGGED 1
+#define SUCCESFUL_CONN 0
+#define CONN_ERROR 1
+#define USER_NOT_FOUND 2
 
 struct user_list u_list;
 
 void ulist_init(){
   u_list.cur_count = 0;
+  for(int i=0;i<1024;i++){
+    u_list.users[i].talker_fd = 0;
+  }
 }
 
 void parse_packet(struct cipa_packet *pack, int user_fd){
@@ -67,6 +73,24 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
       }
       memset(&pack, 0 ,1024);
       break;
+    case H_CONN:
+      while(pack->content[i] != '\n'){
+        uname[i] = pack->content[i];
+        i++;
+      }
+      int res;
+      res = handle_conn(user_fd, uname);
+      if(res == SUCCESFUL_CONN){
+        send(user_fd, "Connection succesfull \n", 23, 0); 
+      }
+      if(res == USER_NOT_FOUND){
+        send(user_fd, "User not found \n", 16, 0);
+      }
+      memset(&pack, 0 ,1024);
+      break;
+    case H_MESS:
+      handle_mess(user_fd, pack->content);
+      break;
     default:
       break;
   }
@@ -84,7 +108,43 @@ int userlist_add(int user_fd, char *uname){
 }
 
 void userlist_remove(int user_fd){
-  for(int i=0
+  int i;
+  for(i=0; i<u_list.cur_count;i++){
+    if(u_list.users[i].user_fd == user_fd);
+    break;
+  }
+  u_list.users[i] = u_list.users[--u_list.cur_count];
+}
+
+int handle_conn(int user_fd, char*uname){
+  int i;
+  for(i=0;i<u_list.cur_count;i++){
+    if(u_list.users[i].user_fd = user_fd) break;
+  }
+  for(int j=0;j<u_list.cur_count;j++){
+    if(!strcmp(uname, u_list.users[j].uname)){
+      u_list.users[i].talker_fd = u_list.users[j].user_fd;
+      char mess[1024];
+      sprintf(mess, "Connected from : %s", u_list.users[i].uname);
+      send(u_list.users[i].talker_fd, mess, sizeof(mess), 0);
+      return SUCCESFUL_CONN;
+    }
+  }
+  return USER_NOT_FOUND;
+}
+
+int handle_mess(int user_fd, char* mess){
+  for(int i=0;i<u_list.cur_count;i++){
+    if(u_list.users[i].user_fd == user_fd){
+      if(u_list.users[i].talker_fd == 0){
+        send(u_list.users[i].user_fd, "You're not connected to talker, please connect with 'c' to proceed \n", 68, 0);
+        return 1;
+      }
+      send(u_list.users[i].talker_fd, mess, 1024, 0);
+      return 0;
+    }
+  }
+  return 2;
 }
 
 struct cipa_packet register_pack(char *uname, char *passwd){
@@ -104,6 +164,7 @@ struct cipa_packet register_pack(char *uname, char *passwd){
 
   return pack;
 }
+
 struct cipa_packet login_pack(char *uname, char *passwd){
   struct cipa_packet pack;
   memset(&pack, 0, 1024);
@@ -118,6 +179,19 @@ struct cipa_packet login_pack(char *uname, char *passwd){
     pack.content[i] = passwd[k];
   }
   pack.content[i++] = '\0';
+
+  return pack;
+}
+
+struct cipa_packet connect_pack(char *uname){
+  struct cipa_packet pack;
+  memset(&pack, 0 , 1024);
+  pack.header = H_CONN;
+
+  int i=0;
+  do{
+    pack.content[i] = uname[i];
+  }while(uname[i++] !=  '\n');
 
   return pack;
 }

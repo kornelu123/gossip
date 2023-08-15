@@ -32,6 +32,7 @@ void *con_recv(void *ptr){
   while(1){
    if(recv(*sock_id, &in_buf, IN_BUF_LENGTH, 0) > 0){
      printf("%s", in_buf);
+     memset(&in_buf, 0, IN_BUF_LENGTH);
    }
   }
 }
@@ -49,10 +50,11 @@ void *con_send(void *ptr){
       case 'i':
         int i;
         for(i=0 ; i<OUT_BUF_LENGTH ; i++){
-           out_buf[i] = fgetc(stdin);
-           if(out_buf[i] == '\n')break;
+           pack.content[i] = fgetc(stdin);
+           if(pack.content[i] == '\n')break;
         }
-        send(*sock_id, out_buf,sizeof(out_buf), 0); 
+        pack.header = H_MESS;
+        send(*sock_id, &pack,sizeof(pack), 0); 
         break;
       case 'r':
         pack = register_pack(uname, passwd);
@@ -64,6 +66,24 @@ void *con_send(void *ptr){
       case 'l':
         pack = login_pack(uname, passwd); 
         if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0 ){
+           fprintf(stderr, "send error : %s \n", gai_strerror(res));
+           exit(1);
+        }
+        break;
+      case 'c':
+        printf("Type in user you want to connect to : \n");
+        char inp;
+        char uname[MAX_UNAME_LEN];
+        for(int i=0;i< OUT_BUF_LENGTH;i++){
+           inp = fgetc(stdin);
+           uname[i] = inp;
+           if(inp == '\n') break;
+        }
+        pack = connect_pack(uname);
+        for(int i=0;i<1023;i++){
+          printf("%c",pack.content[i]);
+        }
+        if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0){
            fprintf(stderr, "send error : %s \n", gai_strerror(res));
            exit(1);
         }

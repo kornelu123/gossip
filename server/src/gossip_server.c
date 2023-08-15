@@ -102,7 +102,7 @@ void del_from_pfds(struct pollfd pfds[], int i, int *fd_count)
 {
     // Copy the one from the end over this one
     pfds[i] = pfds[*fd_count-1];
-
+    userlist_remove(pfds[i].fd);
     (*fd_count)--;
 }
 
