@@ -4,6 +4,8 @@ project(gossip_client)
 
 set(CMAKE_CXX_STANDARD_17)
 
+add_compile_options(-Wall -Wextra -fstack-protector-all)
+
 include_directories(
   ${PROJECT_SOURCE_DIR}/inc
   ${PROJECT_SOURCE_DIR}/src

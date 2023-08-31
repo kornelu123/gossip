@@ -18,7 +18,7 @@ file(GLOB ALL_SRC
   ${PROJECT_SOURCE_DIR}/../src/*.c
 )
 
-add_compile_options(-Wall -Wextra)
+add_compile_options(-Wall -Wextra -fstack-protector-all)
  
 add_executable(gossip_server ${ALL_SRC})
 

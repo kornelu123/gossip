@@ -85,6 +85,7 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
       break;
     case H_MESS:
       handle_mess(user_fd, pack->content);
+      memset(&pack, 0 ,1024);
       break;
     case H_DISCONN:
       handle_disconn(user_fd);
@@ -108,7 +109,11 @@ int userlist_add(int user_fd, char *uname){
 void userlist_remove(int user_fd){
   int i;
   for(i=0; i<u_list.cur_count;i++){
+<<<<<<< HEAD
     if(u_list.users[i].user_fd == user_fd) break;
+=======
+    if(u_list.users[i].user_fd == user_fd)break;
+>>>>>>> cc74ccf (dsc)
   }
   u_list.users[i] = u_list.users[--u_list.cur_count];
 }
@@ -142,7 +147,12 @@ int handle_conn(int user_fd, char*uname){
   for(int j=0;j<u_list.cur_count;j++){
     if(!strcmp(uname, u_list.users[j].uname)){
       u_list.users[i].talker_fd = u_list.users[j].user_fd;
+<<<<<<< HEAD
       u_list.users[j].talker_fd = u_list.users[i].user_fd;
+=======
+      strcpy(u_list.users[i].tname ,u_list.users[j].uname);
+      u_list.users;
+>>>>>>> cc74ccf (dsc)
       char mess[1024];
       sprintf(mess, "Connected from : %s", u_list.users[i].uname);
       send(u_list.users[i].talker_fd, mess, sizeof(mess), 0);
@@ -170,7 +180,7 @@ int handle_mess(int user_fd, char* mess){
 
 struct cipa_packet register_pack(char *uname, char *passwd){
   struct cipa_packet pack;
-  memset(&pack, 0, 1024);
+          memset(&pack, 0, 1024);
   pack.header = H_REG;
 
   int i;
@@ -217,6 +227,7 @@ struct cipa_packet connect_pack(char *uname){
   return pack;
 }
 
+<<<<<<< HEAD
 struct cipa_packet disconn_pack(){
   struct cipa_packet pack;
   memset(&pack, 0, 1024);
@@ -237,4 +248,19 @@ struct cipa_packet mess_pack(char *mess){
   pack.content[i++] = '\0';
 
   return pack;
+=======
+void handle_disconn(int user_fd){
+  int i;
+  for(i=0;i<u_list.cur_count;i++){
+    if(u_list.users[i].user_fd == user_fd) break;
+  }
+  int j;
+  for(j=0;j<u_list.cur_count;i++){
+    if(u_list.users[i].talker_fd == u_list.users[i].user_fd) break;
+  }
+  u_list.users[i].talker_fd = 0;
+  u_list.users[j].talker_fd = 0;
+  u_list.users[i].tname = "";
+  u_list.users[j].tname = "";
+>>>>>>> cc74ccf (dsc)
 }
