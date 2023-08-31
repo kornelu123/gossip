@@ -26,13 +26,10 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
   uint8_t header = pack->header;
   char uname[MAX_UNAME_LEN];
   char passwd[MAX_PASSWD_LEN];
-  int i;
-  int k;
+  int i = 0;
+  int k = 0;
   switch(header){
     case H_REG:
-      i=0;
-      k=0;
-      printf("Got register header\n");
       while(pack->content[i] != '\n'){
         uname[i] = pack->content[i];
         i++;
@@ -48,7 +45,6 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
       }else{
         send(user_fd, "This user already exists \n", 28, 0); 
       }
-      memset(&pack, 0 ,1024);
       break;
     case H_LOGIN:
       i=0;
@@ -72,7 +68,6 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
            send(user_fd, "Succesfully logged in \n", 23, 0);
         }
       }
-      memset(&pack, 0 ,1024);
       break;
     case H_CONN:
       while(pack->content[i] != '\n'){
@@ -87,15 +82,16 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
       if(res == USER_NOT_FOUND){
         send(user_fd, "User not found \n", 16, 0);
       }
-      memset(&pack, 0 ,1024);
       break;
     case H_MESS:
       handle_mess(user_fd, pack->content);
-      memset(&pack, 0 ,1024);
       break;
+    case H_DISCONN:
+      handle_disconn(user_fd);
     default:
       break;
   }
+  memset(&pack, 0, 1024);
 }
 
 int userlist_add(int user_fd, char *uname){
@@ -115,6 +111,27 @@ void userlist_remove(int user_fd){
     if(u_list.users[i].user_fd == user_fd) break;
   }
   u_list.users[i] = u_list.users[--u_list.cur_count];
+}
+
+int handle_disconn(int user_fd){
+  int i;
+  for(i=0;i<u_list.cur_count;i++){
+    if(u_list.users[i].user_fd == user_fd) break;
+  }
+  if(i == u_list.cur_count) return -1;
+
+  int j;
+  for( j=0;j<u_list.cur_count;j++){
+    if(u_list.users[i].talker_fd == u_list.users[j].user_fd) break;
+  }
+
+  if(j == u_list.cur_count) return -1;
+  u_list.users[i].talker_fd =  0;
+  memset(u_list.users[i].tname, 0, MAX_UNAME_LEN);
+  u_list.users[j].talker_fd =  0;
+  memset(u_list.users[j].tname, 0, MAX_UNAME_LEN);
+
+  return 0;
 }
 
 int handle_conn(int user_fd, char*uname){
@@ -139,9 +156,11 @@ int handle_mess(int user_fd, char* mess){
   for(int i=0;i<u_list.cur_count;i++){
     if(u_list.users[i].user_fd == user_fd){
       if(u_list.users[i].talker_fd == 0){
+        send(u_list.users[i].talker_fd, "You're not connected to talker, please connect with 'c' to proceed \n", 68, 0);
         send(u_list.users[i].user_fd, "You're not connected to talker, please connect with 'c' to proceed \n", 68, 0);
         return 1;
       }
+      printf("user_fd : %d\n talker_fd : %d\n",u_list.users[i].user_fd, u_list.users[i].talker_fd);
       send(u_list.users[i].talker_fd, mess, 1024, 0);
       return 0;
     }
@@ -198,22 +217,24 @@ struct cipa_packet connect_pack(char *uname){
   return pack;
 }
 
-struct cipa_packet mess_pack(char *uname, char *mess){
+struct cipa_packet disconn_pack(){
+  struct cipa_packet pack;
+  memset(&pack, 0, 1024);
+  pack.header = H_DISCONN;
+
+  return pack;
+}
+
+struct cipa_packet mess_pack(char *mess){
   struct cipa_packet pack;
   memset(&pack, 0, 1024);
   pack.header = H_MESS;
 
   int i=0;
   do{
-    pack.content[i] = uname[i++];
-  }while(uname[i] != '\n');
-  uname[i++] = ':';
-
-  int k=0;
-  do{
-    pack.content[i++] = mess[k++];
-  }while(pack.content[i] != '\n' && i < 987);
-  uname[i] = '\0';
+    pack.content[i++] = mess[i++];
+  }while(pack.content[i] != '\0');
+  pack.content[i++] = '\0';
 
   return pack;
 }

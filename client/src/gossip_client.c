@@ -10,14 +10,25 @@
 #include <pthread.h>
 #include <termios.h>
 #include "proto_cipa.h"
+#include "gossip_client.h"
 
 #define SIZE 1024
 #define OUT_BUF_LENGTH 1024
 #define IN_BUF_LENGTH 1024
 #define MAX_MESS_LENGTH MAX_PASSWD_LEN
 
-char uname[MAX_UNAME_LEN];
-char passwd[MAX_PASSWD_LEN];
+struct credentials credent;
+
+void get_credent(struct credentials *credent){
+  char uname[MAX_UNAME_LEN];
+  char passwd[MAX_PASSWD_LEN];
+  printf("Insert username : \n");
+  fgets(uname, MAX_UNAME_LEN, stdin);
+  printf("Insert password : \n");
+  fgets(passwd, MAX_PASSWD_LEN, stdin);
+  memcpy(credent->uname, uname, MAX_UNAME_LEN);
+  memcpy(credent->passwd, passwd, MAX_UNAME_LEN);
+}
 
 void set_terminal_properties(){
   static struct termios oldt, newt;
@@ -33,6 +44,7 @@ void *con_recv(void *ptr){
   char in_buf[IN_BUF_LENGTH];
    if(recv(*sock_id, &in_buf, IN_BUF_LENGTH, 0) > 0){
      printf("%s", in_buf);
+     memset(in_buf, 0, IN_BUF_LENGTH);
    }
   }
 }
@@ -50,22 +62,21 @@ void *con_send(void *ptr){
       case 'i':
         int i;
         char mess[MAX_MESS_LENGTH];
-        for(i=0;i<MAX_MESS_LENGTH;i++){
-          if((mess[i] = fgetc(stdin)) == '\n') break;
-        }
-        mess[i-1] = '\0';
-        pack = mess_pack(uname, mess);
+        fgets(mess, MAX_MESS_LENGTH, stdin);
+        printf("%s", mess);
+        pack = mess_pack(mess);
+        printf("Ended getting input\n");
         send(*sock_id, &pack,sizeof(pack), 0); 
         break;
       case 'r':
-        pack = register_pack(uname, passwd);
+        pack = register_pack(credent.uname, credent.passwd);
         if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0 ){
            fprintf(stderr, "send error : %s \n", gai_strerror(res));
            exit(1);
         }
 	     break;
       case 'l':
-        pack = login_pack(uname, passwd); 
+        pack = login_pack(credent.uname, credent.passwd); 
         if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0 ){
            fprintf(stderr, "send error : %s \n", gai_strerror(res));
            exit(1);
@@ -81,9 +92,13 @@ void *con_send(void *ptr){
            if(inp == '\n') break;
         }
         pack = connect_pack(uname);
-        for(int i=0;i<1023;i++){
-          printf("%c",pack.content[i]);
+        if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0){
+           fprintf(stderr, "send error : %s \n", gai_strerror(res));
+           exit(1);
         }
+        break;
+      case 'd':
+        pack = disconn_pack();
         if(res = send(*sock_id, &pack, sizeof(pack), 0) < 0){
            fprintf(stderr, "send error : %s \n", gai_strerror(res));
            exit(1);
@@ -92,24 +107,13 @@ void *con_send(void *ptr){
       default:
 	      break;
     }
+    memset(&pack, 0, 1024);
   }
   exit(0);
 }
 
 int main(){
-  char inp = 0;
-  int count =0;
-  printf("Enter username : ");
-  do{
-    inp = fgetc(stdin);
-    uname[count++] = inp;
-  }while(inp != '\n');
-  count = 0;
-  printf("\nEnter password : ");
-  do{
-    inp = fgetc(stdin);
-    passwd[count++] = inp;
-  }while(inp != '\n');
+  get_credent(&credent);
   char* addr = "127.0.0.1";
   int sock_id = socket(AF_INET ,SOCK_STREAM , IPPROTO_TCP);
   struct sockaddr_in serv_addr;

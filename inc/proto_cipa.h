@@ -11,6 +11,7 @@
 #define H_MESS 3
 #define H_LOGOUT 4
 #define H_CONN 5
+#define H_DISCONN 6
 
 
 typedef struct cipa_packet{
@@ -20,6 +21,7 @@ typedef struct cipa_packet{
 
 typedef struct user{
   char uname[MAX_UNAME_LEN];
+  char tname[MAX_UNAME_LEN];
   int  user_fd;
   int  talker_fd;
 }user;
@@ -43,12 +45,16 @@ int handle_mess(int user_fd, char *mess);
 
 struct cipa_packet login_pack(char *uname, char *passwd);
 
+struct cipa_packet disconn_pack();
+
 struct cipa_packet connect_pack(char *uname);
 
-struct cipa_packet mess_pack(char *uname, char *mess);
+struct cipa_packet mess_pack(char *mess);
 
 void parse_packet(struct cipa_packet *pack, int user_fd);
 
 int search_db(char *uname, char *passwd);
+
+int handle_disconn(int user_fd);
 
 #endif
