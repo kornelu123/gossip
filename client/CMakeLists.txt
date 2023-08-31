@@ -17,6 +17,10 @@ file(GLOB ALL_SRC
   ${PROJECT_SOURCE_DIR}/../inc/*.h
   ${PROJECT_SOURCE_DIR}/../src/*.c
 )
+
+find_package(Curses REQUIRED)
+include_directories(&{CURSES_INCLUDE_DIR})
+
 add_executable(gossip_client ${ALL_SRC})
 
-target_link_libraries(gossip_client)
+target_link_libraries(gossip_client ${CURSES_LIBRARIES})

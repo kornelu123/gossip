@@ -11,6 +11,7 @@
 #include <termios.h>
 #include "proto_cipa.h"
 #include "gossip_client.h"
+#include "user_interface.h"
 
 #define SIZE 1024
 #define OUT_BUF_LENGTH 1024
@@ -113,6 +114,7 @@ void *con_send(void *ptr){
 }
 
 int main(){
+  init_screen();
   get_credent(&credent);
   char* addr = "127.0.0.1";
   int sock_id = socket(AF_INET ,SOCK_STREAM , IPPROTO_TCP);
