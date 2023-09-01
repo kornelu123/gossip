@@ -5,12 +5,12 @@
 #include <sys/ioctl.h>
 #include "user_interface.h"
 #include "proto_cipa.h"
-#define BLACK_WHITE 1
+
+#define RED_BLUE 1
 
 char *credential_mess = "Please insert your login credentials\0";
 
 struct box_coord win_coord;
-
 
 int init_screen(){
   struct winsize ws;
@@ -19,7 +19,7 @@ int init_screen(){
   win_coord.x_end = ws.ws_col;
   win_coord.y_end = ws.ws_row;
   start_color();
-  init_pair(BLACK_WHITE, COLOR_WHITE, COLOR_BLACK);
+  init_pair(RED_BLUE, COLOR_BLACK, COLOR_RED);
   clear();
   print_background();
   print_input_credentials();
@@ -33,12 +33,13 @@ void print_background(){
 }
 
 int print_text(char *text, struct box_coord coord){
-  int textlen = strlen(text);
+  struct ring_buf line;
+  ring_clean(&line);
   int linelen = coord.x_end - coord.x_start -2;
+  line.counter = linelen;
   int linecount = coord.y_end - coord.y_start - 2;
   if((linelen)*(coord.y_end - coord.y_start -2) < textlen) return -1;
   
-  char out;
   for(int j=0;j<linecount;j++){
     for(int i=0;i<linelen;i++){
       if((out = text[j*linelen + i]) == '\0') return 0;
@@ -47,7 +48,9 @@ int print_text(char *text, struct box_coord coord){
     }
   }
 }
+
 void draw_border(struct box_coord coord){
+  attron(COLOR_PAIR(RED_BLUE));
   for(int i=coord.x_start;i<coord.x_end;i++){
     mvprintw(coord.y_start, i, "=");
     mvprintw(coord.y_end -1, i, "=");
@@ -56,6 +59,7 @@ void draw_border(struct box_coord coord){
     mvprintw(i, coord.x_start, "=");
     mvprintw(i, coord.x_end -1, "=");
   }
+  attroff(COLOR_PAIR(RED_BLUE));
 }
 
 void print_input_credentials(){
@@ -64,7 +68,7 @@ void print_input_credentials(){
   coord.x_start   = win_coord.x_end/2 - 35; 
   coord.y_end = win_coord.y_end/2 + 5;
   coord.y_start   = win_coord.y_end/2 - 5;
-  attron(COLOR_PAIR(BLACK_WHITE));
+  attron(COLOR_PAIR(RED_BLUE));
   draw_border(coord);
   coord.y_start++;
   print_text(credential_mess, coord);
@@ -72,5 +76,4 @@ void print_input_credentials(){
   print_text("Username: ", coord);
   coord.y_start++;
   print_text("Password: ", coord);
-  attroff(COLOR_PAIR(BLACK_WHITE));
 }
