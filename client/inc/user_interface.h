@@ -34,7 +34,7 @@ char handle_login_screen(struct credentials *credent);
 
 void draw_border(struct box_coord);
 
-void handle_ui(struct credentials *credent);
+void print_fb_window(char *mess);
 
 void print_home_screen();
 

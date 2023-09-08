@@ -6,6 +6,9 @@
 #define MAX_UNAME_LEN 127
 #define MAX_PASSWD_LEN 894
 
+#define SUCCESSFUL 0
+#define FAILED 1
+
 #define H_LOGIN 1
 #define H_REG 2
 #define H_MESS 3
@@ -56,5 +59,9 @@ void parse_packet(struct cipa_packet *pack, int user_fd);
 int search_db(char *uname, char *passwd);
 
 int handle_disconn(int user_fd);
+
+struct cipa_packet success_pack(char *mess);
+
+struct cipa_packet failed_pack(char *mess);
 
 #endif

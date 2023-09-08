@@ -24,12 +24,19 @@ int search_db(char *uname, char *passwd){
       return 0;
     }
   }
+  sprintf(lookup, "user:%s;passwd:", uname);
+  while((chars = getline(&lineptr, &size, db_read)) >= 0){
+    if(!(strcmp(lookup,lineptr))){
+      fclose(db_read);
+      return 2;
+    }
+  }
   fclose(db_read);
   return 1;
 }
 
 void add_user(char *uname, char *passwd){
   FILE *db_app = fopen(db_file, "a");
-  fprintf(db_app,"user:%s;passwd:%s",uname,passwd);
+  fprintf(db_app,"user:%s;passwd:%s\n",uname,passwd);
   fclose(db_app);
 }

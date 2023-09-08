@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <termios.h>
+#include <ncurses.h>
 #include "proto_cipa.h"
 #include "gossip_client.h"
 #include "user_interface.h"
@@ -19,6 +20,46 @@
 #define MAX_MESS_LENGTH MAX_PASSWD_LEN
 
 struct credentials credent;
+
+void handle_login(int sock_id){
+  init_screen();
+  char inp;
+  int res;
+  int err = 0;
+  clear();
+  do{
+    echo();
+    inp = handle_login_screen(&credent);
+    noecho();
+    if(inp == 'r'){
+      struct cipa_packet pack = register_pack(credent.uname, credent.passwd);
+      if((res = send(sock_id, &pack, sizeof(pack), 0) < 0)){
+        fprintf(stderr, "send error : %s \n", gai_strerror(res));
+        exit(1);
+      }
+      recv(sock_id, &pack, IN_BUF_LENGTH, 0);
+      clear();
+      print_fb_window(pack.content);
+      wgetch(stdscr);
+    }else if(inp == 'l'){
+      struct cipa_packet pack = login_pack(credent.uname, credent.passwd); 
+      if(res = send(sock_id, &pack, sizeof(pack), 0) < 0 ){
+        fprintf(stderr, "send error : %s \n", gai_strerror(res));
+        exit(1);
+      }
+      recv(sock_id, &pack, sizeof(pack), 0);
+      clear();
+      print_fb_window(pack.content);
+      wgetch(stdscr);
+      if(pack.header == SUCCESSFUL){
+        break;
+      }
+    }else{
+      clear();
+      print_fb_window("Not a valid input");
+    }
+  }while(1);
+}
 
 void get_credent(struct credentials *credent){
   char uname[MAX_UNAME_LEN];
@@ -114,7 +155,6 @@ void *con_send(void *ptr){
 }
 
 int main(){
-  handle_ui(&credent);
   char* addr = "127.0.0.1";
   int sock_id = socket(AF_INET ,SOCK_STREAM , IPPROTO_TCP);
   struct sockaddr_in serv_addr;
@@ -126,7 +166,8 @@ int main(){
   if(connect(sock_id, (struct sockaddr *)&serv_addr, sizeof(serv_addr))){
     return -1;
   }
-  
+
+  handle_login(sock_id);
 
   pthread_t transmiter;
   pthread_t receiver;

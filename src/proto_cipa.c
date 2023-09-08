@@ -26,11 +26,15 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
   uint8_t header = pack->header;
   char uname[MAX_UNAME_LEN];
   char passwd[MAX_PASSWD_LEN];
-  int i = 0;
-  int k = 0;
+  int i ;
+  int k ;
   switch(header){
     case H_REG:
-      while(pack->content[i] != '\n'){
+      memset(uname, 0, MAX_UNAME_LEN);
+      memset(passwd, 0, MAX_PASSWD_LEN);
+      i=0;
+      k=0;
+      while(pack->content[i] != '\0'){
         uname[i] = pack->content[i];
         i++;
       }
@@ -39,18 +43,19 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
         passwd[k] = pack->content[i];
         k++;i++;
       }
-      if(search_db(uname, passwd)){
+      if(search_db(uname, passwd) != ( 1 || 2)){
         add_user(uname, passwd);
-        send(user_fd, "Registered succesfully \n", 25, 0);
+        struct cipa_packet pack = success_pack("Registered succesfully \n");
+        send(user_fd,&pack, sizeof(pack), 0);
       }else{
-        send(user_fd, "This user already exists \n", 28, 0); 
+        struct cipa_packet pack = failed_pack("This user already exists \n");
+        send(user_fd, &pack , sizeof(pack), 0); 
       }
       break;
     case H_LOGIN:
       i=0;
       k=0;
-      printf("Got login header\n");
-      while(pack->content[i] != '\n'){
+      while(pack->content[i] != '\0'){
         uname[i] = pack->content[i];
         i++;
       }
@@ -59,13 +64,17 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
         passwd[k] = pack->content[i];
         k++;i++;
       }
-      if(search_db(uname, passwd)){
-        send(user_fd, "Username or password is incorrect \n",35, 0);
+      pack->content[i++] = '\0';
+      if(search_db(uname, passwd) != 0){
+        struct cipa_packet pack = failed_pack("Username or password is incorrect ");
+        send(user_fd, &pack, sizeof(pack), 0);
       }else{
         if(userlist_add(user_fd, uname) == ALREADY_LOGGED){
-           send(user_fd, "User already logged \n", 21, 0);
+          struct cipa_packet pack = failed_pack("User already logged ");
+          send(user_fd,&pack, sizeof(pack) , 0);
         }else{
-           send(user_fd, "Succesfully logged in \n", 23, 0);
+          struct cipa_packet pack = success_pack("Succesfully logged in ");
+          send(user_fd,&pack, sizeof(pack) , 0);
         }
       }
       break;
@@ -91,7 +100,7 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
     default:
       break;
   }
-  memset(&pack, 0, 1024);
+  memset(pack, 0, 1024);
 }
 
 int userlist_add(int user_fd, char *uname){
@@ -177,6 +186,7 @@ struct cipa_packet register_pack(char *uname, char *passwd){
   for(i=0; uname[i] != '\0'; i++){
     pack.content[i] = uname[i];
   }
+  pack.content[i++] = '\0';
 
   for(int k=0; passwd[k] != '\0'; i++,k++){
     pack.content[i] = passwd[k];
@@ -195,6 +205,7 @@ struct cipa_packet login_pack(char *uname, char *passwd){
   for(i=0; uname[i] != '\0'; i++){
     pack.content[i] = uname[i];
   }
+  uname[i++] = '\0';
 
   for(int k=0; passwd[k] != '\0'; i++,k++){
     pack.content[i] = passwd[k];
@@ -232,9 +243,31 @@ struct cipa_packet mess_pack(char *mess){
 
   int i=0;
   do{
-    pack.content[i++] = mess[i++];
+    pack.content[i] = mess[i++];
   }while(pack.content[i] != '\0');
   pack.content[i++] = '\0';
+
+  return pack;
+}
+
+struct cipa_packet success_pack(char *mess){
+  struct cipa_packet pack;
+  pack.header = SUCCESSFUL;
+  int i=0;
+  do{
+    pack.content[i++] = mess[i];
+  }while(pack.content[i] != '\0');
+
+  return pack;
+}
+
+struct cipa_packet failed_pack(char *mess){
+  struct cipa_packet pack;
+  pack.header = FAILED;
+  int i=0;
+  do{
+    pack.content[i] = mess[i++];
+  }while(pack.content[i] != '\0');
 
   return pack;
 }

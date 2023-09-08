@@ -3,6 +3,7 @@
 #include <menu.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <stdbool.h>
 #include "user_interface.h"
 #include "proto_cipa.h"
 
@@ -10,8 +11,12 @@
 
 char *credential_mess = "Please insert your login credentials\nLogin : \nPassword :";
 
+struct cipa_packet cipack;
+
 struct box_coord win_coord;
-struct box_coord mess_coord;
+struct box_coord log_coord;
+struct box_coord fb_coord;
+
 char uname[MAX_UNAME_LEN];
 
 int init_screen(){
@@ -20,53 +25,43 @@ int init_screen(){
   ioctl(0, TIOCGWINSZ, &ws);
   win_coord.x_end = ws.ws_col;
   win_coord.y_end = ws.ws_row;
+  fb_coord.x_start = win_coord.x_start + 1;
+  fb_coord.x_end = win_coord.x_end;
+  fb_coord.y_start = win_coord.y_end - 4;
+  fb_coord.y_end = win_coord.y_end;
+  log_coord.x_start = (win_coord.x_end/2) - 35;
+  log_coord.x_end = (win_coord.x_end/2) + 35;
+  log_coord.y_start = (win_coord.y_end/2) - 4;
+  log_coord.y_end = (win_coord.y_end/2) + 4;
   return 0;
 }
 
+void print_fb_window(char *mess){
+  struct string_buf *buff = create_buff(fb_coord, mess);
+  draw_message_box(fb_coord, mess);
+  print_text(buff);
+  free_buff(buff);
+}
+
 char handle_login_screen(struct credentials * credent){
-  mess_coord.x_start = (win_coord.x_end/2) - 35;
-  mess_coord.x_end = (win_coord.x_end/2) + 35;
-  mess_coord.y_start = (win_coord.y_end/2) - 4;
-  mess_coord.y_end = (win_coord.y_end/2) + 4;
   start_color();
   init_pair(RED_BLUE, COLOR_BLACK, COLOR_RED);
   clear();
   print_background();
-  draw_message_box(mess_coord ,credential_mess);
+  draw_message_box(log_coord ,credential_mess);
   refresh();
-  mvprintw(mess_coord.y_end -1, mess_coord.x_start + 1, "Log in <l>");
-  move(mess_coord.y_start + 2, mess_coord.x_start + strlen("Login : "));
+  mvprintw(log_coord.y_end -2, log_coord.x_start + 1, "Log in <l>");
+  mvprintw(log_coord.y_end -2, log_coord.x_start + 12 + strlen("Log in <l>"), "Register <r>");
+  move(log_coord.y_start + 2, log_coord.x_start + strlen("Login : "));
   getnstr(credent->uname, MAX_UNAME_LEN);
   strcpy(uname, credent->uname);
-  move(mess_coord.y_start + 3, mess_coord.x_start + strlen("Password : "));
+  move(log_coord.y_start + 3, log_coord.x_start + strlen("Password : "));
   getnstr(credent->passwd, MAX_PASSWD_LEN);
-  mvprintw(mess_coord.y_end , mess_coord.x_start + 2 + strlen("Log in <l>"), "Register <r>");
   char input;
   noecho();
-  do{
-    input = getch();
-  }while(input != 'l' || input != 'r');
+  input = wgetch(stdscr);
   echo();
   return input;
-}
-
-void handle_ui(struct credentials * credent){
-  init_screen();
-  char inp;
-  do{
-    clear();
-    inp = handle_login_screen(credent);
-  }while(inp != 'r');
-  noecho();
-  clear();
-  while((inp = getch()) != 'q'){
-    switch(inp){
-      default:
-      print_home_screen();
-    }
-    }
-  }
-  endwin();
 }
 
 void print_home_screen(){
