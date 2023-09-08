@@ -114,8 +114,7 @@ void *con_send(void *ptr){
 }
 
 int main(){
-  init_screen();
-  get_credent(&credent);
+  handle_ui(&credent);
   char* addr = "127.0.0.1";
   int sock_id = socket(AF_INET ,SOCK_STREAM , IPPROTO_TCP);
   struct sockaddr_in serv_addr;
@@ -127,8 +126,8 @@ int main(){
   if(connect(sock_id, (struct sockaddr *)&serv_addr, sizeof(serv_addr))){
     return -1;
   }
-   
   
+
   pthread_t transmiter;
   pthread_t receiver;
   int iret1, iret2;
