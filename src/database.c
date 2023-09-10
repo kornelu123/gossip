@@ -14,13 +14,13 @@ int search_db(char *uname, char *passwd){
     exit(1);
   }
   char* lookup = malloc(( sizeof (char))*1024);
-  sprintf(lookup, "user:%s;passwd:%s", uname, passwd);
+  sprintf(lookup, "user:%s;passwd:%s\n", uname, passwd);
   char *lineptr = NULL;
   size_t size = 0;
   ssize_t chars;
   while((chars = getline(&lineptr, &size, db_read)) >= 0){
     if(!(strcmp(lookup,lineptr))){
-      fclose(db_read);
+    fclose(db_read);
       return 0;
     }
   }

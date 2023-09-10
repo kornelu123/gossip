@@ -37,26 +37,36 @@ void handle_login(int sock_id){
         fprintf(stderr, "send error : %s \n", gai_strerror(res));
         exit(1);
       }
+      memset(&pack, 0 , sizeof(pack));
       recv(sock_id, &pack, IN_BUF_LENGTH, 0);
       clear();
       print_fb_window(pack.content);
       wgetch(stdscr);
+      memset(&pack, 0, sizeof(pack));
     }else if(inp == 'l'){
       struct cipa_packet pack = login_pack(credent.uname, credent.passwd); 
       if(res = send(sock_id, &pack, sizeof(pack), 0) < 0 ){
         fprintf(stderr, "send error : %s \n", gai_strerror(res));
         exit(1);
       }
+      memset(&pack, 0 , sizeof(pack));
       recv(sock_id, &pack, sizeof(pack), 0);
       clear();
-      print_fb_window(pack.content);
-      wgetch(stdscr);
       if(pack.header == SUCCESSFUL){
+        clear();
+        print_fb_window("Succesfull login");
+        refresh();
+        wgetch(stdscr);
         break;
       }
+      print_fb_window(pack.content);
+      wgetch(stdscr);
+      memset(&pack, 0, sizeof(pack));
     }else{
       clear();
       print_fb_window("Not a valid input");
+      refresh();
+      wgetch(stdscr);
     }
   }while(1);
 }
