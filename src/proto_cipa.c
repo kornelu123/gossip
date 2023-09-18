@@ -107,6 +107,15 @@ void parse_packet(struct cipa_packet *pack, int user_fd){
       break;
     case H_DISCONN:
       handle_disconn(user_fd);
+      break;
+    case H_REQ_ACT:
+      printf("%s", "Handling\n");
+      int count = 0;
+      do{
+        *pack = active_u_pack(u_list, &count);
+        send(user_fd, &pack, sizeof(pack), 0);
+      }while(pack->header != H_ANS_ACT_EN);
+      break;
     default:
       break;
   }
@@ -254,7 +263,8 @@ struct cipa_packet mess_pack(char *mess){
 
   int i=0;
   do{
-    pack.content[i] = mess[i++];
+    pack.content[i] = mess[i];
+    i++;
   }while(pack.content[i] != '\0');
   pack.content[i++] = '\0';
 
@@ -266,7 +276,8 @@ struct cipa_packet success_pack(char *mess){
   pack.header = SUCCESSFUL;
   int i=0;
   do{
-    pack.content[i++] = mess[i];
+    pack.content[i] = mess[i];
+    i++;
   }while(pack.content[i] != '\0');
 
   return pack;
@@ -277,8 +288,56 @@ struct cipa_packet failed_pack(char *mess){
   pack.header = FAILED;
   int i=0;
   do{
-    pack.content[i] = mess[i++];
+    pack.content[i] = mess[i];
+    i++;
   }while(pack.content[i] != '\0');
 
   return pack;
+}
+
+struct cipa_packet active_u_pack(struct user_list ulist, int *count){
+  struct cipa_packet pack;
+  int j =0;
+  for(int i=*count;i<ulist.cur_count;i++){
+    int ulen = strlen(ulist.users[i].uname);
+    if((j + ulen +1)> 1023 ) {
+      pack.content[j++] ='\0';
+      *count = i;
+      pack.header = H_ANS_ACT_NE;
+      return pack;
+    }
+    for(int k=0;k< ulen && j< 1023;k++, j++){
+      pack.content[j] = ulist.users[i].uname[k];
+    }
+    pack.content[j++] = '\0';
+  }
+  pack.header = H_ANS_ACT_EN;
+  *count =0;
+  return pack;
+}
+
+struct cipa_packet request_u_pack(){
+  struct cipa_packet pack;
+  pack.header = H_REQ_ACT;
+  return pack;
+}
+
+int handle_active_u_pack(struct user_list *ulist, int server_fd){
+    struct cipa_packet pack = request_u_pack();
+    send(server_fd, &pack, sizeof(pack), 0); 
+    char uname_temp[MAX_UNAME_LEN];
+    int k=0;
+    int i;
+    do{
+      recv(server_fd, &pack, sizeof(pack), 0);
+      i=0;
+      while(i < 1023){
+        uname_temp[k++] = pack.content[i];
+        if(pack.content[i++] == '\0'){
+           k=0;
+           strcpy(uname_temp, ulist->users[ulist->cur_count++].uname);
+        }
+      }
+    }while(pack.header != H_ANS_ACT_EN);
+    return ulist->cur_count;
 }

@@ -20,6 +20,7 @@
 #define MAX_MESS_LENGTH MAX_PASSWD_LEN
 
 struct credentials credent;
+struct user_list ulist;
 
 void handle_login(int sock_id){
   init_screen();
@@ -69,6 +70,11 @@ void handle_login(int sock_id){
       wgetch(stdscr);
     }
   }while(1);
+}
+
+void handle_home_screen(int server_fd){
+  int count = handle_active_u_pack(&ulist, server_fd);
+  print_home_screen(credent.uname, &ulist);
 }
 
 void get_credent(struct credentials *credent){
@@ -178,6 +184,7 @@ int main(){
   }
 
   handle_login(sock_id);
+  handle_home_screen(sock_id);
 
   pthread_t transmiter;
   pthread_t receiver;

@@ -15,7 +15,9 @@ struct cipa_packet cipack;
 
 struct box_coord win_coord;
 struct box_coord log_coord;
+struct box_coord users_coord;
 struct box_coord fb_coord;
+struct box_coord header_coord;
 
 char uname[MAX_UNAME_LEN];
 
@@ -29,10 +31,18 @@ int init_screen(){
   fb_coord.x_end = win_coord.x_end;
   fb_coord.y_start = win_coord.y_end - 4;
   fb_coord.y_end = win_coord.y_end;
-  log_coord.x_start = (win_coord.x_end/2) - 35;
-  log_coord.x_end = (win_coord.x_end/2) + 35;
-  log_coord.y_start = (win_coord.y_end/2) - 4;
-  log_coord.y_end = (win_coord.y_end/2) + 4;
+  log_coord.x_start = (win_coord.x_end/2) - (win_coord.x_end/4);
+  log_coord.x_end = (win_coord.x_end/2) + (win_coord.x_end/4);
+  log_coord.y_start = (win_coord.y_end/2) - (win_coord.y_end/6);
+  log_coord.y_end = (win_coord.y_end/2) + (win_coord.y_end/6);
+  users_coord.x_start = (win_coord.x_end/5);
+  users_coord.y_start = win_coord.y_start + 4;
+  users_coord.y_end = win_coord.y_end;
+  users_coord.x_end = win_coord.x_end;
+  header_coord.x_start = win_coord.x_start;
+  header_coord.x_end   = win_coord.x_end;
+  header_coord.y_start = win_coord.y_start;
+  header_coord.y_end   = win_coord.y_start + 4;
   return 0;
 }
 
@@ -64,18 +74,15 @@ char handle_login_screen(struct credentials * credent){
   return input;
 }
 
-void print_home_screen(){
+void print_home_screen(char *uname,struct user_list *ulist){
   print_background();
-  struct box_coord header;
-  header.x_start = win_coord.x_start;
-  header.x_end   = win_coord.x_end;
-  header.y_start = win_coord.y_start;
-  header.y_end   = win_coord.y_start + 4;
 
   char *mess;
   mess = malloc(sizeof ( char ) * strlen(uname) + strlen("Your nickname : "));
   sprintf(mess, "Your nickname : %s", uname);
-  draw_message_box(header, mess);
+  draw_message_box(header_coord, mess);
+  draw_users_box(users_coord, ulist);
+  wgetch(stdscr);
   free(mess);
 }
 
@@ -149,8 +156,12 @@ struct string_buf *create_buff(struct box_coord coord, char *text){
     }
     buff[k][j] = text[i];
   }
-
   return text_buff;
+}
+void print_act_users(struct user_list *ulist, struct box_coord coord){
+  for(int i=0;i<ulist->cur_count && i < (coord.y_end - coord.y_start -2);i++){
+    mvprintw(coord.y_start + i, coord.x_start +1, ulist->users[i].uname);
+  }
 }
 
 int count_lines(char *text, int size_x){
@@ -169,4 +180,8 @@ void print_text(struct string_buf *text){
   for(int i=0;i< text->size_y;i++){
     mvprintw(text->start_y + i, text->start_x, text->buff[i]);
   }
+}
+void draw_users_box(struct box_coord users_coord, struct user_list *ulist){
+  draw_border(users_coord);
+  print_act_users(ulist, users_coord);
 }

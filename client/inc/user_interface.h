@@ -47,4 +47,11 @@ void print_text(struct string_buf *text);
 int count_lines(char *text, int size_x);
 
 void free_buff(struct string_buf *buff);
+
+void print_act_users(struct user_list *ulist, struct box_coord coord);
+
+void draw_user_list(struct user_list *ulist, struct box_coord coord);
+
+void draw_users_box(struct box_coord users_coord, struct user_list *ulist);
+
 #endif

@@ -8,14 +8,15 @@
 
 #define SUCCESSFUL 0
 #define FAILED 1
-
-#define H_LOGIN 1
-#define H_REG 2
-#define H_MESS 3
-#define H_LOGOUT 4
-#define H_CONN 5
-#define H_DISCONN 6
-
+#define H_LOGIN 2
+#define H_REG 3
+#define H_MESS 4
+#define H_LOGOUT 5
+#define H_CONN 6
+#define H_DISCONN 7
+#define H_REQ_ACT 8
+#define H_ANS_ACT_NE 9
+#define H_ANS_ACT_EN 10
 
 typedef struct cipa_packet{
   uint8_t header;
@@ -63,5 +64,11 @@ int handle_disconn(int user_fd);
 struct cipa_packet success_pack(char *mess);
 
 struct cipa_packet failed_pack(char *mess);
+
+struct cipa_packet request_u_pack();
+
+struct cipa_packet active_u_pack(struct user_list ulist, int *count);
+
+int handle_active_u_pack(struct user_list *ulist, int server_fd);
 
 #endif
