@@ -13,11 +13,6 @@
 
 #define PORT "8080"
 
-void *parser_t(void *ptr){
-  struct cipa_packet *pack = (struct cipa_packet *)ptr;
-  pthread_exit(NULL);
-}
-
 struct cipa_packet pack;
 
 // Get sockaddr, IPv4 or IPv6:
