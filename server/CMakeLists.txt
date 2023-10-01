@@ -20,6 +20,6 @@ file(GLOB ALL_SRC
 
 add_compile_options(-Wall -Wextra -fstack-protector-all)
  
-add_executable(gossip_server ${ALL_SRC})
+add_executable(gossip_server_2 ${ALL_SRC})
 
-target_link_libraries(gossip_server)
+target_link_libraries(gossip_server_2)

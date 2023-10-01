@@ -1,5 +1,6 @@
 #ifndef _PROTO_CIPA_H
 #define _PROTO_CIPA_H
+
 #include <stdint.h>
 #include <stdio.h>
 
