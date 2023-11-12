@@ -1,22 +1,23 @@
 #ifndef BUFFER_H_
 #define BUFFER_H_
 
+#include "proto_cipa.h"
+
 struct node{
-    void *content;
-    struct node *next;
-    int size;
+    struct intern_pack *pack;
+    struct node        *next;
 };
 
 struct buff{
-    struct node *first;
-    struct node *last;
+    struct node       *first;
+    struct node        *last;
 };
 
 
 void init_buff(struct buff *buf);
 
-int pop(struct buff *buf, void *content);
+int pop(struct buff *buf, struct intern_pack **pack);
 
-void push(struct buff *buf, void *content, int size);
+void push(struct buff *buf, struct intern_pack *pack);
 
 #endif

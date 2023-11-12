@@ -8,16 +8,26 @@
 #include <netdb.h>
 #include <poll.h>
 #include <pthread.h>
-
+#include <errno.h>
+#include <unistd.h>
+ 
 #include "proto_cipa.h"
 #include "buffer.h"
+#include "gossip_server.h"
+#include "debug.h"
 
 #define PORT "44444"
 
-int listener;
-pthread_rwlock_t sort_lock;
-
 struct buff sort_buf;
+
+pthread_mutex_t buf_mut;
+pthread_mutex_t  fb_mut;
+
+struct user_list *ulist;
+
+pthread_t handle_thread;
+
+uint8_t add_more_threads = 0;
 
 int get_listener_socket(void){
     int listener, rv;
@@ -71,27 +81,94 @@ void add_to_pfds(struct pollfd *pfds[], int newfd, int *fd_count, int *fd_size){
     }
 
     (*pfds)[*fd_count].fd = newfd;
-    (*pfds)[*fd_count++].events = POLLIN;
+    (*pfds)[*fd_count].events = POLLIN;
+
+    (*fd_count)++;
 }
 
 void del_from_pfds(struct pollfd pfds[], int i, int *fd_count){
-    pfds[i] = pfds[--*fd_count];
+    pfds[i] = pfds[*fd_count-1];
+
+    (*fd_count)--;
 }
 
-void add_sort_buff(struct cipa_packet pack){
-    pthread_rwlock_wrlock(&sort_lock);
-        push(&sort_buf, (void *)&pack, sizeof(pack));
-    pthread_rwlock_unlock(&sort_lock);
+void add_sort_buff( void *content, int user_fd){
+    struct cipa_pack pack;
+    uint8_t *head = content;
+    uint16_t *size = content + sizeof(uint8_t) ;
+    uint8_t  *bytes = content + sizeof(uint8_t)  + sizeof(uint16_t);
+    pack.head = *head;
+    pack.size = *size;
+    pack.content = malloc(pack.size);
+    memcpy(pack.content, bytes, pack.size);
+
+    struct intern_pack sort = make_intern_pack(pack, user_fd);
+
+    pthread_mutex_lock(&buf_mut);
+        push(&sort_buf, &sort);
+    pthread_mutex_unlock(&buf_mut);
 }
 
-void *receive_task(){
+void init_buffers(){
+    init_buff(&sort_buf);
+}
+
+void *handle_task(){
+    struct intern_pack *pack = NULL;
+    while(1){
+        pthread_mutex_lock(&buf_mut);
+        if(pop(&sort_buf, &pack)){
+            pthread_mutex_unlock(&buf_mut);
+            continue;
+        }
+        clock_t clk = clock();
+
+        pthread_mutex_unlock(&buf_mut);
+
+        if((clk - pack->queued_clk)/(CLOCKS_PER_SEC << 6) > 1){
+            pthread_mutex_lock(&fb_mut);
+            add_more_threads = 1;
+            pthread_mutex_unlock(&fb_mut);
+        }
+
+        switch(pack->packet.head){
+            case H_LOG:{
+                if(search_db(pack->packet.content)){
+                    make_and_send_pack(pack->user_fd, R_SUCC_LOG, NULL);
+                    add_active_user(&ulist, pack->user_fd, pack->packet.content);
+                    pack_ulist(ulist, &pack->packet);
+                    make_and_send_pack(pack->user_fd, R_USER_LIST, (void *)ulist);
+                    break;
+                }
+
+                make_and_send_pack(pack->user_fd, R_FAIL_LOG, NULL);
+                break;
+            }
+            case H_REG:{
+                if(!search_db(pack->packet.content)){
+                    make_and_send_pack(pack->user_fd, R_SUCC_REG, NULL);
+                    add_user(pack->packet.content);
+                    break;
+                }
+
+                make_and_send_pack(pack->user_fd, R_FAIL_REG, NULL);
+                break;
+            }
+            case H_DEL:{
+
+            }
+        }
+    }
+}
+
+int main(){
+    ulist_init(&ulist);
+
     int fd_count = 0;
     int fd_size = 5;
     struct pollfd *pfds = malloc(sizeof *pfds *fd_size);
 
-    listener = get_listener_socket();
-
-    struct cipa_packet pack;
+    int listener = get_listener_socket();
 
     if(listener == -1){
         fprintf(stderr, "error getting listening socket\n");
@@ -106,6 +183,8 @@ void *receive_task(){
     struct sockaddr_storage remoteaddr;
     socklen_t addrlen;
 
+    pthread_create(&handle_thread, NULL, handle_task, NULL);
+
     for(;;){
         int poll_count = poll(pfds, fd_count, -1);
         if(poll_count == -1){
@@ -115,7 +194,7 @@ void *receive_task(){
         }
         for(int i=0; i<fd_count; i++){
             
-            if(pfds[i].events & POLLIN){
+            if(pfds[i].revents & POLLIN){
                 
                 if(pfds[i].fd == listener){
                     
@@ -127,11 +206,11 @@ void *receive_task(){
                     } else {
 
                         add_to_pfds(&pfds, newfd, &fd_count, &fd_size);
-                        printf("connected");
                     }
                 } else {
-
-                    int nbytes = recv(pfds[i].fd, &pack, sizeof pack, 0);
+                    
+                    void *content = malloc(MAX_CIPA_PACK_LEN);
+                    int nbytes = recv(pfds[i].fd, content, MAX_CIPA_PACK_LEN, 0);
                     if(nbytes <= 0){
                         if(nbytes == 0){
 
@@ -143,66 +222,14 @@ void *receive_task(){
                             perror("recv");
                         }
                     } else {
-                        printf("got pack");
 
-                        add_sort_buff(pack);
+                        content = realloc(content, nbytes);
+                        add_sort_buff(content, pfds[i].fd);
                     }
                 }
             }
         }
     }
-}
-
-void handle_pack(struct cipa_packet pack){
-    printf("%s", pack.content);
-}
-
-void init_buffers(){
-    init_buff(&sort_buf);
-}
-
-void *sort_task(){
-
-    struct cipa_packet pack;
-
-    for(;;){
-        pthread_rwlock_rdlock(&sort_lock);
-        if(pop(&sort_buf, (void *)&pack))
-            pthread_rwlock_unlock(&sort_lock);
-            continue;
-        pthread_rwlock_unlock(&sort_lock);
-        handle_pack(pack);
-    }
-
-}
-
-int main(){
-
-    pthread_t receiver;
-    pthread_t sorter;
-    int res;
-
-    init_buffers();
-    if((res = pthread_rwlock_init(&sort_lock, NULL))){
-
-        perror("rwlock");
-        exit(1);
-    }
-
-    pthread_create(&receiver,
-            NULL,
-            receive_task,
-            NULL);
-
-    pthread_create(&sorter,
-            NULL,
-            sort_task,
-            NULL);
-
-
-
-    pthread_join(receiver, NULL);
-    pthread_join(sorter, NULL);
 
     return 0;
 }

@@ -5,19 +5,19 @@
 #include "buffer.h"
 
 void init_buff(struct buff *buf){
-
-    buf = malloc(sizeof (buf));
-    buf->first = malloc(sizeof(buf->first));
-    buf->last =  malloc(sizeof(buf->last));
+    buf = (struct buff *)malloc(sizeof(struct buff));
+    buf->first = NULL;
+    buf->last =  NULL;
 }
 
-int pop(struct buff *buf, void *content){
+int pop(struct buff *buf, struct intern_pack **pack){
 
     if(buf->first == NULL || buf->last == NULL)
         return -1;
+    
+    *pack = realloc(*pack, sizeof(*buf->first->pack));
+    memcpy(*pack, buf->first->pack, sizeof(*buf->first->pack));
 
-    memset(content, 0, buf->first->size);
-    memcpy(content, buf->first->content, buf->first->size);
     if(buf->first == buf->last){
 
         buf->first = NULL;
@@ -25,23 +25,20 @@ int pop(struct buff *buf, void *content){
         return 0;
     }
 
-    buf->first->next = buf->first->next->next;
     buf->first = buf->first->next;
     return 0;
 }
 
-void push(struct buff *buf, void *content, int size){
-
-    struct node *nd = malloc(sizeof(nd));
-    nd->content = malloc(size);
-    memcpy(nd->content, content, size);
-    nd->size = size;
+void push(struct buff *buf, struct intern_pack *pack){
+    struct node *nd = malloc(sizeof(struct node));
+    nd->pack = malloc(sizeof(*pack));
+    memcpy(nd->pack, pack, sizeof(*pack));
     nd->next = NULL;
+
     if(buf->first == NULL || buf->last == NULL){
 
         buf->first = nd;
-        buf->last = buf->first;
-        buf->last->next = NULL;
+        buf->last = nd;
         return;
     }
 

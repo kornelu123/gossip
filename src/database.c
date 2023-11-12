@@ -5,9 +5,31 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+#include "database.h"
+
 const char *db_file = "users.txt";
 
-int search_db(char *uname, char *passwd){
+int search_db(uint8_t *content){
+  char *uname = (char *)malloc(MAX_UNAME_LEN);
+  char *passwd = (char *)malloc(MAX_PASSWD_LEN);
+
+  int i=0;
+  int j=0;
+
+  do{
+    uname[i] = content[i];
+    i++;
+  }while(uname[i - 1] != '\n');
+  uname[i - 1] = '\0';
+
+  do{
+    passwd[j] = content[i];
+    i++;
+    j++;
+  }while(passwd[j - 1] != '\n');
+  passwd[j - 1] = '\0';
+
+
   FILE* db_read = fopen(db_file,"r");
   if(db_read == NULL){
     fprintf(stderr, "fopen : %s", gai_strerror(db_file));
@@ -25,11 +47,31 @@ int search_db(char *uname, char *passwd){
     }
   }
   fclose(db_read);
-  return 1;
+  return -1;
 }
 
-void add_user(char *uname, char *passwd){
+void add_user(uint8_t *content){
+  char *uname = (char *)malloc(MAX_UNAME_LEN);
+  char *passwd = (char *)malloc(MAX_PASSWD_LEN);
+
+  int i=0;
+  int j=0;
+
+  do{
+    uname[i] = content[i];
+    i++;
+  }while(uname[i - 1] != '\n');
+  uname[i - 1] = '\0';
+
+  do{
+    passwd[j] = content[i];
+    i++;
+    j++;
+  }while(passwd[j - 1] != '\n');
+  passwd[j - 1] = '\0';
+
   FILE *db_app = fopen(db_file, "a");
-  fprintf(db_app,"user:%s;passwd:%s",uname,passwd);
+  printf("user:%s;passwd:%s\n",uname,passwd);
+  fprintf(db_app,"user:%s;passwd:%s\n",uname,passwd);
   fclose(db_app);
 }

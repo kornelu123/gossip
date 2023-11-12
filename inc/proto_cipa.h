@@ -3,59 +3,73 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <time.h>
 
-#define MAX_UNAME_LEN 127
-#define MAX_PASSWD_LEN 894
+#include "database.h"
 
-#define H_LOGIN 1
-#define H_REG 2
-#define H_MESS 3
-#define H_LOGOUT 4
-#define H_CONN 5
-#define H_DISCONN 6
+#define USER_NOT_FOUND  -1
+#define USER_FOUND       0
+#define USER_DELETED     0
 
 
-typedef struct cipa_packet{
-  uint8_t header;
-  char content[1023];
-}cipa_packet;
+#define MAX_CIPA_PACK_LEN 1400
 
-typedef struct user{
-  char uname[MAX_UNAME_LEN];
-  char tname[MAX_UNAME_LEN];
-  int  user_fd;
-  int  talker_fd;
-}user;
+#define H_LOG   0x00
+#define H_REG   0x01
+#define H_DEL   0x02
+#define H_ULIST 0x03
 
-typedef struct user_list{
-  user users[1024];
-  int cur_count;
-}user_list;
+#define R_USER_LIST 0xFB
+#define R_FAIL_REG  0xFC
+#define R_SUCC_REG  0xFD
+#define R_SUCC_LOG  0xFE
+#define R_FAIL_LOG  0xFF
 
-void ulist_init();
+struct user{
+    int              user_fd;
+    char *             uname;
+    struct user*        next;
+    struct user*        prev;
+};
 
-int userlist_add(int user_fd, char *uname);
+struct user_list{
+    struct user *       first;
+    struct user *        last;
+};
 
-void userlist_remove(int user_fd);
+struct __attribute__((packed)) cipa_pack{
+    uint8_t             head;
+    uint16_t            size;
+    uint8_t         *content;
+};
 
-int handle_conn(int user_fd, char *uname);
+struct __attribute__((packed)) intern_pack{
+    clock_t       queued_clk;
+    int              user_fd;
+    struct cipa_pack  packet;
+};
 
-struct cipa_packet register_pack(char *uname, char *passwd);
+struct intern_pack make_intern_pack(struct cipa_pack pack, int user_fd);
 
-int handle_mess(int user_fd, char *mess);
+void make_and_send_pack(int server_fd, uint8_t head, void *content);
 
-struct cipa_packet login_pack(char *uname, char *passwd);
+int pack_credent(struct user_credent *credent, struct cipa_pack *pack);
 
-struct cipa_packet disconn_pack();
+struct cipa_pack make_pack(uint8_t head, void *content);
 
-struct cipa_packet connect_pack(char *uname);
+void send_pack(int server_fd, struct cipa_pack pack);
 
-struct cipa_packet mess_pack(char *mess);
+int pack_ulist(struct user_list *ulist, struct cipa_pack *pack);
 
-void parse_packet(struct cipa_packet *pack, int user_fd);
+void add_to_user_list(struct user_list **ulist, struct user **u);
 
-int search_db(char *uname, char *passwd);
+int del_from_user_list(struct user_list **list, int user_fd);
 
-int handle_disconn(int user_fd);
+int find_user_by_name(struct user_list ulist,struct user *u ,char *uname);
+
+void add_active_user(struct user_list **ulist, int user_fd, uint8_t *content);
+
+void ulist_init(struct user_list **ulist);
 
 #endif
