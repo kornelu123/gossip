@@ -97,6 +97,7 @@ void add_sort_buff( void *content, int user_fd){
     uint8_t *head = content;
     uint16_t *size = content + sizeof(uint8_t) ;
     uint8_t  *bytes = content + sizeof(uint8_t)  + sizeof(uint16_t);
+
     pack.head = *head;
     pack.size = *size;
     pack.content = malloc(pack.size);
@@ -133,11 +134,12 @@ void *handle_task(){
 
         switch(pack->packet.head){
             case H_LOG:{
-                if(search_db(pack->packet.content)){
-                    make_and_send_pack(pack->user_fd, R_SUCC_LOG, NULL);
+                if(search_db(pack->packet.content, NOT_DEL)){
                     if(add_active_user(&ulist, pack->user_fd, pack->packet.content)){
+                        make_and_send_pack(pack->user_fd, R_FAIL_LOG, NULL);
                         break;
                     }
+                    make_and_send_pack(pack->user_fd, R_SUCC_LOG, NULL);
                     pack_ulist(ulist, &pack->packet);
                     make_and_send_pack(pack->user_fd, R_USER_LIST, (void *)ulist);
                     break;
@@ -147,7 +149,7 @@ void *handle_task(){
                 break;
             }
             case H_REG:{
-                if(!search_db(pack->packet.content)){
+                if(!search_db(pack->packet.content, NOT_DEL)){
                     make_and_send_pack(pack->user_fd, R_SUCC_REG, NULL);
                     add_user(pack->packet.content);
                     break;
@@ -157,7 +159,16 @@ void *handle_task(){
                 break;
             }
             case H_DEL:{
+                if(search_db(pack->packet.content, DEL_USER)){
+                    make_and_send_pack(pack->user_fd, R_SUCC_DEL, NULL);
+                    break;
+                }
 
+                make_and_send_pack(pack->user_fd, R_FAIL_DEL, NULL);
+                break;
+            }
+            case H_ULIST:{
+                
             }
         }
     }

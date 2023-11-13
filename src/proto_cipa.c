@@ -123,16 +123,15 @@ int add_active_user(struct user_list **ulist, int user_fd, uint8_t *content){
     }
     while(us != NULL){
         if(!memcmp(us->uname, u->uname, i)){
-            add_to_user_list(ulist, &u);
-            return 0;
+            return 1;
          }
          us = us->next;
    }
 
+    add_to_user_list(ulist, &u);
     return 1;
 }
 void add_to_user_list(struct user_list **ulist, struct user **u){
-
 
     if(((*ulist)->first == NULL) || ((*ulist)->first == NULL)){
 
@@ -158,14 +157,14 @@ int del_from_user_list(struct user_list **ulist, int user_fd){
             u->prev->next = u->next;
             if(u == (*ulist)->last){
                 (*ulist)->last = u->prev;
-                return USER_DELETED;
+                return 0;
             }
             u->next->prev = u->prev;
-            return USER_DELETED;
+            return 0;
         }
     }while(u->next != NULL);
 
-    return USER_NOT_FOUND;
+    return 1;
 }
 
 int find_user_by_name(struct user_list ulist,struct user *u ,char *uname){

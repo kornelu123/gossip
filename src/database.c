@@ -9,7 +9,7 @@
 
 const char *db_file = "users.txt";
 
-int search_db(uint8_t *content){
+int search_db(uint8_t *content, uint8_t del_flag){
   char *uname = (char *)malloc(MAX_UNAME_LEN);
   char *passwd = (char *)malloc(MAX_PASSWD_LEN);
 
@@ -40,11 +40,31 @@ int search_db(uint8_t *content){
   char *lineptr = NULL;
   size_t size = 0;
   ssize_t chars;
+  int count = 0;
+
   while((chars = getline(&lineptr, &size, db_read)) >= 0){
     if(!(strcmp(lookup,lineptr))){
-      fclose(db_read);
+      if(del_flag == DEL_USER){
+        int i=0;
+        FILE* temp_file = fopen("temp", "w");
+        while((chars = getline(&lineptr, &size, db_read) >= 0)){
+          if(i != count){
+              continue;
+          }
+
+          fprintf(temp_file, lineptr);
+        }
+  
+        fclose(temp_file);
+        fclose(db_read);
+        remove(db_file);
+        rename("temp", db_file);
+
+        return 0;
+      }
       return 0;
     }
+    count++;
   }
   fclose(db_read);
   return -1;

@@ -12,7 +12,6 @@
 #define USER_FOUND       0
 #define USER_DELETED     0
 
-
 #define MAX_CIPA_PACK_LEN 1400
 
 #define H_LOG   0x00
@@ -20,9 +19,11 @@
 #define H_DEL   0x02
 #define H_ULIST 0x03
 
-#define R_USER_LIST 0xFB
-#define R_FAIL_REG  0xFC
-#define R_SUCC_REG  0xFD
+#define R_USER_LIST 0xF9
+#define R_SUCC_DEL  0xFA
+#define R_FAIL_DEL  0xFB
+#define R_SUCC_REG  0xFC
+#define R_FAIL_REG  0xFD
 #define R_SUCC_LOG  0xFE
 #define R_FAIL_LOG  0xFF
 
