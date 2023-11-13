@@ -26,7 +26,8 @@
 #define R_SUCC_LOG  0xFE
 #define R_FAIL_LOG  0xFF
 
-struct user{
+struct __attribute__((packed)) user{
+    int                 size;
     int              user_fd;
     char *             uname;
     struct user*        next;
@@ -68,7 +69,7 @@ int del_from_user_list(struct user_list **list, int user_fd);
 
 int find_user_by_name(struct user_list ulist,struct user *u ,char *uname);
 
-void add_active_user(struct user_list **ulist, int user_fd, uint8_t *content);
+int add_active_user(struct user_list **ulist, int user_fd, uint8_t *content);
 
 void ulist_init(struct user_list **ulist);
 

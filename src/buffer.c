@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "buffer.h"
 
@@ -17,6 +18,8 @@ int pop(struct buff *buf, struct intern_pack **pack){
     
     *pack = realloc(*pack, sizeof(*buf->first->pack));
     memcpy(*pack, buf->first->pack, sizeof(*buf->first->pack));
+    free(buf->first->pack);
+    free(buf->first);
 
     if(buf->first == buf->last){
 
@@ -30,7 +33,7 @@ int pop(struct buff *buf, struct intern_pack **pack){
 }
 
 void push(struct buff *buf, struct intern_pack *pack){
-    struct node *nd = malloc(sizeof(struct node));
+    struct node *nd =(struct node *) malloc(sizeof(struct node));
     nd->pack = malloc(sizeof(*pack));
     memcpy(nd->pack, pack, sizeof(*pack));
     nd->next = NULL;

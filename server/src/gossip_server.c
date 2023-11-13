@@ -135,7 +135,9 @@ void *handle_task(){
             case H_LOG:{
                 if(search_db(pack->packet.content)){
                     make_and_send_pack(pack->user_fd, R_SUCC_LOG, NULL);
-                    add_active_user(&ulist, pack->user_fd, pack->packet.content);
+                    if(add_active_user(&ulist, pack->user_fd, pack->packet.content)){
+                        break;
+                    }
                     pack_ulist(ulist, &pack->packet);
                     make_and_send_pack(pack->user_fd, R_USER_LIST, (void *)ulist);
                     break;

@@ -47,9 +47,11 @@ int pack_ulist(struct user_list *ulist, struct cipa_pack *pack){
     int i=0;
     struct user *u = ulist->first;
 
+    printf("%d", u->size);
+    fflush(stdout);
     while(1){
-        memcpy(content + i, u->uname, sizeof(u->uname));
-        i += sizeof(u->uname);
+        memcpy(content + i, u->uname, u->size);
+        i += u->size;
         if(u->next == NULL) 
             break;
         u = u->next;
@@ -97,21 +99,37 @@ void ulist_init(struct user_list **ulist){
     (*ulist)->last  = NULL;
 }
 
-void add_active_user(struct user_list **ulist, int user_fd, uint8_t *content){
+int add_active_user(struct user_list **ulist, int user_fd, uint8_t *content){
     struct user *u = (struct user*) malloc(sizeof (struct user));
     u->uname = (char *) malloc(*content);
     char uname[MAX_UNAME_LEN];
-    int i=0;
+    int i = 0;
 
     do{
         uname[i] = content[i];
         i++;
     }while(uname[i-1] != 0x0A);
     uname[i-1] = '\0';
+    u->size = i;
 
-    u->uname = realloc(u->uname, i + 2);
+    struct user *us = (struct user*) malloc(sizeof (struct user));
+    us = (*ulist)->first;
+
+    u->uname = realloc(u->uname, i);
     memcpy(u->uname, uname, i);
-    add_to_user_list(ulist, &u);
+    if(us == NULL){
+        add_to_user_list(ulist, &u);
+        return 0;
+    }
+    while(us != NULL){
+        if(!memcmp(us->uname, u->uname, i)){
+            add_to_user_list(ulist, &u);
+            return 0;
+         }
+         us = us->next;
+   }
+
+    return 1;
 }
 void add_to_user_list(struct user_list **ulist, struct user **u){
 
