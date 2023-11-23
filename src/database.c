@@ -7,7 +7,21 @@
 
 #include "database.h"
 
-        const char *db_file = "users.txt";
+const char *db_file = "users.txt";
+
+int save_message(char *uname, char *mess){
+    char opt;
+    if( access(uname, F_OK) == 0){
+      opt = 'a';
+    }else{
+      opt = 'w';
+    }
+
+    FILE *file = fopen(app, opt);
+    fprintf(file, "%s\n", mess);
+    close(file);
+    return 0;
+}
 
 int search_db(uint8_t *content, uint8_t del_flag){
   char *uname = (char *)malloc(MAX_UNAME_LEN);
@@ -100,7 +114,6 @@ void add_user(uint8_t *content){
   passwd[j - 1] = '\0';
 
   FILE *db_app = fopen(db_file, "a");
-  printf("user:%s;passwd:%s\n",uname,passwd);
   fprintf(db_app,"user:%s;passwd:%s\n",uname,passwd);
   fclose(db_app);
 }
