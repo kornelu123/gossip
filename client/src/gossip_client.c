@@ -59,7 +59,7 @@ void *con_send(void *ptr){
             case 'r':{
                 uint8_t head = H_REG;
                 make_and_send_pack(*sock_id, head, (void *)&credent);
-    	        break;
+                break;
             }
             case 'l':{
                 uint8_t head = H_LOG;
@@ -70,6 +70,18 @@ void *con_send(void *ptr){
                 uint8_t head = H_DEL;
                 make_and_send_pack(*sock_id, head, (void *)&credent);
                 break;
+            }
+            case 'm':{
+                printf("Input username of person you want to message\n");
+                char *uname = (char *)malloc(MAX_UNAME_LEN);
+                fgets(uname, MAX_UNAME_LEN, stdin);
+                printf("Input message\n");
+                char *mess = (char *)malloc(1024);
+                fgets(mess, 1024, stdin);
+                char *content = malloc(strlen(uname) + strlen(mess) + 2);
+                memcpy(content, uname, strlen(uname));
+                memcpy(content + strlen(uname) , mess, strlen(mess) + 1);
+                make_and_send_pack(*sock_id, H_MESS, (void *)content);
             }
             default:
                 break;

@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdio.h> 
 #include <string.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -20,8 +20,10 @@
 
 struct buff sort_buf;
 
-pthread_mutex_t buf_mut;
-pthread_mutex_t  fb_mut;
+pthread_mutex_t  buf_mut;
+pthread_mutex_t   fb_mut;
+
+pthread_cond_t buf_event;
 
 struct user_list *ulist;
 
@@ -97,16 +99,16 @@ void add_sort_buff( void *content, int user_fd){
     uint8_t *head = content;
     uint16_t *size = content + sizeof(uint8_t) ;
     uint8_t  *bytes = content + sizeof(uint8_t)  + sizeof(uint16_t);
-
     pack.head = *head;
     pack.size = *size;
-    pack.content = malloc(pack.size);
+    pack.content = (uint8_t *)malloc(pack.size);
     memcpy(pack.content, bytes, pack.size);
 
-    struct intern_pack sort = make_intern_pack(pack, user_fd);
+    struct intern_pack sort = make_intern_pack(pack.size, &pack, user_fd);
 
     pthread_mutex_lock(&buf_mut);
         push(&sort_buf, &sort);
+        pthread_cond_signal(&buf_event);
     pthread_mutex_unlock(&buf_mut);
 }
 
@@ -117,14 +119,14 @@ void init_buffers(){
 void *handle_task(){
     struct intern_pack *pack = NULL;
     while(1){
+        int ret = -1;
         pthread_mutex_lock(&buf_mut);
-        if(pop(&sort_buf, &pack)){
-            pthread_mutex_unlock(&buf_mut);
-            continue;
+        while(ret){
+            pthread_cond_wait(&buf_event, &buf_mut);
+            ret = pop(&sort_buf, &pack);
         }
-        clock_t clk = clock();
-
         pthread_mutex_unlock(&buf_mut);
+        clock_t clk = clock();
 
         if((clk - pack->queued_clk)/(CLOCKS_PER_SEC << 6) > 1){
             pthread_mutex_lock(&fb_mut);
@@ -134,12 +136,9 @@ void *handle_task(){
 
         switch(pack->packet.head){
             case H_LOG:{
-                if(search_db(pack->packet.content, NOT_DEL)){
-                    if(add_active_user(&ulist, pack->user_fd, pack->packet.content)){
-                        make_and_send_pack(pack->user_fd, R_FAIL_LOG, NULL);
-                        break;
-                    }
+                if(search_db(pack->packet.content, NOT_DEL) == 0){
                     make_and_send_pack(pack->user_fd, R_SUCC_LOG, NULL);
+                    add_active_user(&ulist, pack->user_fd, pack->packet.content);
                     pack_ulist(ulist, &pack->packet);
                     make_and_send_pack(pack->user_fd, R_USER_LIST, (void *)ulist);
                     break;
@@ -149,7 +148,7 @@ void *handle_task(){
                 break;
             }
             case H_REG:{
-                if(!search_db(pack->packet.content, NOT_DEL)){
+                if(search_db(pack->packet.content, NOT_DEL) == -1){
                     make_and_send_pack(pack->user_fd, R_SUCC_REG, NULL);
                     add_user(pack->packet.content);
                     break;
@@ -159,7 +158,7 @@ void *handle_task(){
                 break;
             }
             case H_DEL:{
-                if(search_db(pack->packet.content, DEL_USER)){
+                if(search_db(pack->packet.content, DEL_USER) == 0){
                     make_and_send_pack(pack->user_fd, R_SUCC_DEL, NULL);
                     break;
                 }
@@ -168,7 +167,22 @@ void *handle_task(){
                 break;
             }
             case H_ULIST:{
-                
+                pack_ulist(ulist, &pack->packet);
+                make_and_send_pack(pack->user_fd, R_USER_LIST, (void *)ulist);
+                break;
+            }
+            case H_MESS:{
+                char *uname = (char *)malloc(MAX_UNAME_LEN);
+                uint8_t *content = pack_message(pack->packet.content, uname);
+                int fd = find_user_fd_by_name(*ulist, uname);
+                if(fd == -1){
+                    make_and_send_pack(pack->user_fd, R_FAILED_MESS, NULL);
+                    free(content);
+                    break;
+                }
+                make_and_send_pack(fd, R_MESS, (void *)content);
+                free(content);
+                break;
             }
         }
     }
