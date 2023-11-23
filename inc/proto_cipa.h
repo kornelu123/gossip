@@ -55,7 +55,7 @@ struct __attribute__((packed)) intern_pack{
     struct cipa_pack  packet;
 };
 
-struct intern_pack make_intern_pack(int size, struct cipa_pack *pack, int user_fd);
+struct intern_pack *make_intern_pack(struct cipa_pack *pack, int user_fd);
 
 void make_and_send_pack(int server_fd, uint8_t head, void *content);
 
@@ -77,6 +77,6 @@ int add_active_user(struct user_list **ulist, int user_fd, uint8_t *content);
 
 void ulist_init(struct user_list **ulist);
 
-uint8_t *pack_message(struct intern_pack *pack, char *uname);
+uint8_t *pack_message(struct intern_pack *pack, char **uname);
 
 #endif

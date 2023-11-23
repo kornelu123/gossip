@@ -6,17 +6,16 @@
 #include "proto_cipa.h"
 #include "database.h"
 
-struct intern_pack make_intern_pack(int size, struct cipa_pack *pack, int user_fd){
+struct intern_pack *make_intern_pack( struct cipa_pack *pack, int user_fd){
 
-    struct intern_pack sort;
-    sort.user_fd = user_fd;
-    sort.packet.content = (uint8_t *)malloc(size);
-    printf("%hhx", sort.packet.content);
-    memcpy(sort.packet.content, pack->content, size);
-    sort.packet.size = pack->size;
-    sort.packet.head = pack->head;
+    struct intern_pack *sort = (struct intern_pack *)malloc(sizeof(struct intern_pack));;
+    sort->user_fd = user_fd;
+    sort->packet.content = (uint8_t *)malloc(pack->size);
+    memcpy(sort->packet.content, pack->content, pack->size);
+    sort->packet.size = pack->size;
+    sort->packet.head = pack->head;
     clock_t clk = clock();
-    sort.queued_clk = clk;
+    sort->queued_clk = clk;
 
     return sort;
 }
@@ -65,7 +64,7 @@ int pack_ulist(struct user_list *ulist, struct cipa_pack *pack){
     return i;
 }
 
-void make_and_send_pack(int server_fd, uint8_t head, void * content){
+void make_and_send_pack(int fd, uint8_t head, void * content){
 
     struct cipa_pack pack;
     pack.size = 0;
@@ -74,21 +73,13 @@ void make_and_send_pack(int server_fd, uint8_t head, void * content){
     int size;
 
     switch(head){
-        case H_LOG:
-        case H_REG:
-        case H_DEL:{
-            size = pack_credent((struct user_credent *)content, &pack);
-            pack.size = size;
-            break;
-        }
-        case H_MESS:{
-            pack.size = strlen(content);
-            pack.content = (uint8_t *)malloc(pack.size);
-            memcpy(pack.content, content, pack.size);
-            break;
-        }
+        case R_SUCC_REG:
+        case R_FAIL_REG:
+        case R_SUCC_DEL:
+        case R_FAIL_DEL:
         case R_SUCC_LOG:
-        case R_FAIL_LOG:{
+        case R_FAIL_LOG:
+        case R_FAILED_MESS:{
             break;
         }
         case R_USER_LIST:{
@@ -96,33 +87,46 @@ void make_and_send_pack(int server_fd, uint8_t head, void * content){
             pack.size = size;
             break;
         }
+        case R_MESS:
+        case H_MESS: {
+            pack.size = strlen(content);
+            pack.content = (uint8_t *)malloc(pack.size);
+            memcpy(pack.content, content, pack.size);
+            break;
+        }
+        case H_LOG:
+        case H_REG:
+        case H_DEL:{
+            size = pack_credent((struct user_credent *)content, &pack);
+            pack.size = size;
+            break;
+        }
     }
 
-    send_pack(server_fd, pack);
+    send_pack(fd, pack);
     free(pack.content);
 }
 
-uint8_t *pack_message(struct intern_pack *pack, char *uname){
+uint8_t *pack_message(struct intern_pack *pack, char **uname){
     char *u = (char *)malloc(MAX_UNAME_LEN);
     int i = 0;
     for(; pack->packet.content[i] != '\n';i++){
-        printf("%02X:", pack->packet.content[i]);
-        fflush(stdout);
         u[i] = pack->packet.content[i];
     }
 
     u[i] = '\0';
-    uname = realloc(uname, i);
+    i++;
+    *uname = realloc((*uname), i);
 
-    memcpy(uname, u, i);
-    int j = i;
+    memcpy((*uname), u, i);
+    int j = 0;
     uint8_t *content = (uint8_t *)malloc(MAX_CIPA_PACK_LEN);
-    for(;pack->packet.content[i] !='\0'; i++){
-        content[i-j] = pack->packet.content[i];
+    for(;pack->packet.content[i] !='\n'; j++,i++){
+        content[j] = pack->packet.content[i];
     }
-    content[i] = '\0';
+    content[j] = '\0';
+    j++;
 
-    content = realloc(content, i-j);
     free(u);
     return content;
 }
@@ -208,7 +212,7 @@ int find_user_fd_by_name(struct user_list ulist, char *uname){
     u = ulist.first;
 
     do{
-       if(!memcmp(u->uname, uname, MAX_UNAME_LEN)){
+       if(!memcmp(u->uname, uname, strlen(u->uname))){
             return u->user_fd;
        }
        u = u->next;

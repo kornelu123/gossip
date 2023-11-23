@@ -104,10 +104,10 @@ void add_sort_buff( void *content, int user_fd){
     pack.content = (uint8_t *)malloc(pack.size);
     memcpy(pack.content, bytes, pack.size);
 
-    struct intern_pack sort = make_intern_pack(pack.size, &pack, user_fd);
+    struct intern_pack *sort = make_intern_pack(&pack, user_fd);
 
     pthread_mutex_lock(&buf_mut);
-        push(&sort_buf, &sort);
+        push(&sort_buf, sort);
         pthread_cond_signal(&buf_event);
     pthread_mutex_unlock(&buf_mut);
 }
@@ -173,7 +173,7 @@ void *handle_task(){
             }
             case H_MESS:{
                 char *uname = (char *)malloc(MAX_UNAME_LEN);
-                uint8_t *content = pack_message(pack->packet.content, uname);
+                uint8_t *content = pack_message(pack, &uname);
                 int fd = find_user_fd_by_name(*ulist, uname);
                 if(fd == -1){
                     make_and_send_pack(pack->user_fd, R_FAILED_MESS, NULL);
