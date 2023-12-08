@@ -73,10 +73,12 @@ int del_from_user_list(struct user_list **list, int user_fd);
 
 int find_user_fd_by_name(struct user_list ulist, char *uname);
 
+int find_name_by_fd(struct user_list **ulist, int user_fd, char *uname);
+
 int add_active_user(struct user_list **ulist, int user_fd, uint8_t *content);
 
 void ulist_init(struct user_list **ulist);
 
-uint8_t *pack_message(struct intern_pack *pack, char **uname);
+uint8_t *pack_message(char *name, struct intern_pack *pack, char **uname);
 
 #endif

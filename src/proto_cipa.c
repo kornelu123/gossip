@@ -107,7 +107,7 @@ void make_and_send_pack(int fd, uint8_t head, void * content){
     free(pack.content);
 }
 
-uint8_t *pack_message(struct intern_pack *pack, char **uname){
+uint8_t *pack_message(char *name, struct intern_pack *pack, char **uname){
     char *u = (char *)malloc(MAX_UNAME_LEN);
     int i = 0;
     for(; pack->packet.content[i] != '\n';i++){
@@ -121,6 +121,10 @@ uint8_t *pack_message(struct intern_pack *pack, char **uname){
     memcpy((*uname), u, i);
     int j = 0;
     uint8_t *content = (uint8_t *)malloc(MAX_CIPA_PACK_LEN);
+    for(;name[j] != '\0';j++){
+        content[j] = name[j];
+    }
+    content[j++] = '\n';
     for(;pack->packet.content[i] !='\n'; j++,i++){
         content[j] = pack->packet.content[i];
     }
@@ -161,7 +165,7 @@ int add_active_user(struct user_list **ulist, int user_fd, uint8_t *content){
         return 0;
     }
     while(us != NULL){
-        if(!memcmp(us->uname, u->uname, i)){
+        if(!memcmp(us->uname, u->uname, i-1)){
             return 1;
          }
          us = us->next;
@@ -206,13 +210,27 @@ int del_from_user_list(struct user_list **ulist, int user_fd){
     return 1;
 }
 
+int find_name_by_fd(struct user_list **ulist,int user_fd, char *uname){
+    struct user *u = malloc(sizeof(struct user));
+    u = (*ulist)->first;
+    do{
+        if(u->user_fd == user_fd){
+            memcpy(uname, u->uname, strlen(u->uname) + 1);
+            return 0;
+        }
+        u = u->next;
+    }while(u != NULL);
+
+    return 1;
+}
+
 int find_user_fd_by_name(struct user_list ulist, char *uname){
     struct user *u = (struct user *)malloc(sizeof(struct user));
     u->uname = (char *)malloc(MAX_UNAME_LEN);
     u = ulist.first;
 
     do{
-       if(!memcmp(u->uname, uname, strlen(u->uname))){
+       if(!memcmp(u->uname, uname, strlen(u->uname) - 2)){
             return u->user_fd;
        }
        u = u->next;

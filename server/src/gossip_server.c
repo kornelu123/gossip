@@ -173,10 +173,14 @@ void *handle_task(){
             }
             case H_MESS:{
                 char *uname = (char *)malloc(MAX_UNAME_LEN);
-                uint8_t *content = pack_message(pack, &uname);
+                char *name = (char *)malloc(MAX_UNAME_LEN);
+                printf("%d",find_name_by_fd(&ulist, pack->user_fd, name));
+                fflush(stdout);
+                uint8_t *content = pack_message(name, pack, &uname);
                 int fd = find_user_fd_by_name(*ulist, uname);
                 if(fd == -1){
                     make_and_send_pack(pack->user_fd, R_FAILED_MESS, NULL);
+                    fflush(stdout);
                     free(content);
                     break;
                 }

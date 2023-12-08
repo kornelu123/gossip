@@ -14,6 +14,8 @@ struct user_credent{
 
 void add_user(uint8_t *content);
 
+int save_message( char *uname, char *mess);
+
 int search_db(uint8_t *content, uint8_t del_flag);
 
 #endif

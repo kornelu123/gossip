@@ -41,9 +41,12 @@ void *con_recv(void *ptr){
   ssize_t res;
    if((res = recv(*sock_id, &in_buf, IN_BUF_LENGTH, 0)) > 0){
      for(int i=0; i<res; i++){
-        printf("%02X:", in_buf[i]);
+        printf("%c:", in_buf[i]);
      }
      printf("\n");
+     if(in_buf[0] == 0xF8){
+        printf("%s", in_buf[3]);
+     }
      memset(in_buf, 0, IN_BUF_LENGTH);
    }
   }

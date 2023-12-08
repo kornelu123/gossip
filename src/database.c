@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -10,16 +12,15 @@
 const char *db_file = "users.txt";
 
 int save_message(char *uname, char *mess){
-    char opt;
-    if( access(uname, F_OK) == 0){
-      opt = 'a';
-    }else{
-      opt = 'w';
-    }
 
-    FILE *file = fopen(app, opt);
+    char name[strlen(uname) + strlen(".txt")];
+    snprintf(name, sizeof(name), "%s.txt", uname);
+    FILE *file = fopen(name, 'a');
+    if(file == NULL){
+        fprintf(stderr, "fopen %s", strerror(errno));
+    }
     fprintf(file, "%s\n", mess);
-    close(file);
+    fclose(file);
     return 0;
 }
 
