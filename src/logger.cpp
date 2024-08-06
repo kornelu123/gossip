@@ -45,7 +45,7 @@ logger
     }
 
     void
-      log(char *msg, uint8_t debug_lvl)
+      log(const char *msg, uint8_t debug_lvl)
     {
       if(debug_lvl >= this->log_opt){
         logger::print_log_pre(debug_lvl);
