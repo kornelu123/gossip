@@ -1,4 +1,8 @@
 #include <thread>
+#include <stack>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 
 #include <cerrno>
 #include <cstring>
@@ -18,8 +22,17 @@
 
 #define MAX_USER_COUNT  64
 
-#include "logger.cpp"
-#include "cip.cpp"
+#define MAX_THREAD_COUNT CONFIG_NEW_THREADS_MESS_THRESH
+#define MIN_THREAD_COUNT 2
+
+#define NEW_THREADS_MESS_THRESH CONFIG_NEW_THREADS_MESS_THRESH
+
+#define THREAD_UPDATE_TIME_S CONFIG_THREAD_UPDATE_TIME_S
+
+#if CONFIG_LOG != CONFVAL_LOG_NONE
+  #include "cip.cpp"
+  #include "logger.cpp"
+#endif
 
 logger logg;
 
@@ -35,18 +48,75 @@ server
 
     uint16_t                            port;
 
+    std::stack<cip::intern_pack>        recv_stack;
+
+    std::mutex                          recv_mut;
+    std::condition_variable             recv_cond;
+
+    uint16_t                            cur_thread_count;
+
   public:
 
      server(uint16_t port)
     {
       this->fd_count = 0;
       this->port = port;
+      this->cur_thread_count = MIN_THREAD_COUNT;
 
       add_pfd(get_listener_socket(), POLLIN, 0);
     }
 
     void
-      run(void)
+      handle_sched(std::thread **thread_table)
+    {
+      while(true){
+        std::this_thread::sleep_for(std::chrono::seconds(4));
+
+        if(!recv_stack.size())
+          continue;
+
+        if(recv_stack.size() > NEW_THREADS_MESS_THRESH){
+          if((cur_thread_count << 1) > MAX_THREAD_COUNT)
+            continue;
+
+          cur_thread_count <<= 1;
+          thread_table = (std::thread **)realloc(thread_table, sizeof(std::thread*)*cur_thread_count);
+          for(int i = (cur_thread_count << 1); i < cur_thread_count; i++){
+            thread_table[i] = new std::thread(&server::handle_parse, this);
+          }
+          continue;
+        }
+      }
+    }
+
+    void
+      handle_parse(void)
+    {
+      while(true){
+
+        cip::intern_pack *packet = (cip::intern_pack *)std::malloc(sizeof(cip::intern_pack));
+        std::unique_lock lk(recv_mut);
+
+          const bool empty = recv_stack.empty();
+
+          if(!empty){
+            *packet = recv_stack.top();
+            recv_stack.pop();
+          } else {
+            recv_cond.wait(lk, [this]{ return !recv_stack.empty() ;});
+
+            *packet = recv_stack.top();
+            recv_stack.pop();
+          }
+
+        lk.unlock();
+
+        packet->print_pack();
+      }
+    }
+
+    void
+      handle_recv()
     {
       const int listener = pfds[0].fd;
       for(;;){
@@ -86,14 +156,34 @@ server
 
                 del_pfd(i);
               } else {
-              
-                cip_pack::recved_pack *packet = new cip_pack::recved_pack(recv_bytes, content);
-                cip_pack::recved_pack::print_pack(*packet);
+                cip::intern_pack *pack = new cip::intern_pack(content, pfds[i].fd);
+
+                recv_mut.lock();
+
+                  recv_stack.push(*pack);
+                  recv_cond.notify_one();
+
+                recv_mut.unlock();
               }
             }
           }
         }
       }
+    }
+
+
+    void
+      run(void)
+    {
+      std::thread recv_thread(&server::handle_recv, this);
+
+      std::thread **parse_threads = new std::thread*[MIN_THREAD_COUNT];
+      parse_threads[0] = new std::thread(&server::handle_parse, this);
+      parse_threads[1] = new std::thread(&server::handle_parse, this);
+
+      std::thread shed_thread(&server::handle_sched, this, parse_threads);
+
+      recv_thread.join();
     }
 
   private:
@@ -177,7 +267,9 @@ main(int argc, char *argv[])
 
     char msg[64];
     snprintf(msg, 64, "No port argument, running with default port %d", DEFAULT_PORT);
+#if CONFIG_LOG != CONFVAL_LOG_NONE
     logg.log(msg, LOG_WARN);
+#endif
   }else{
     uint16_t port_input;
     if(sscanf(argv[1], "%hi", &port_input) == 1){
@@ -185,13 +277,17 @@ main(int argc, char *argv[])
 
       char msg[64];
       snprintf(msg, 64, "Starting server with port %d", port_input);
+#if CONFIG_LOG != CONFVAL_LOG_NONE
       logg.log(msg, LOG_INFO);
+#endif
     } else {
       serv = new server(DEFAULT_PORT);
 
       char msg[64];
       snprintf(msg, 64, "Bad port argument, running with default port %d", DEFAULT_PORT);
+#if CONFIG_LOG != CONFVAL_LOG_NONE
       logg.log("Bad port argument, running with default port 1337", LOG_WARN);
+#endif
     }
   }
 

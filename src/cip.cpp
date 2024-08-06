@@ -7,30 +7,42 @@
 
 #define MAX_PACK_LEN 256
 
-namespace cip_pack{
+namespace cip{
+  enum header{
+    log,
+    reg,
+    act_user,
+  };
+
   class
-  recved_pack{
-    private:
+    pack{
+      public:
       uint8_t                                   header;
       std::array<uint8_t, MAX_PACK_LEN - 1>     content;
 
+        void
+          print_pack()
+        {
+          printf("%2X ", this->header);
+          for (int i=0; i<this->content.size(); i++){
+            printf("%2X ", this->content[i]);
+            if((i + 1) % 16 == 15)
+              printf("\n");
+          }
+        }
+    };
+
+  class
+  intern_pack : public pack{
     public:
-      recved_pack(int size, uint8_t *content)
+      int                       user_fd;
+
+      intern_pack(uint8_t *content, int fd)
       {
-        header = *content;
+        this->header = *content;
         
         this->content = std::array<uint8_t, MAX_PACK_LEN - 1>();
         std::memcpy(this->content.begin(), content + 1, MAX_PACK_LEN - 1);
       }
-
-    static void
-      print_pack(cip_pack::recved_pack pack)
-    {
-      std::cout << "Header:" << pack.header << std::endl;
-
-      for (const auto& e : pack.content){
-        std::cout << std::hex;
-      }
-    }
   };
 }
