@@ -29,10 +29,9 @@
 
 #define THREAD_UPDATE_TIME_S CONFIG_THREAD_UPDATE_TIME_S
 
-#if CONFIG_LOG != CONFVAL_LOG_NONE
-  #include "cip.cpp"
-  #include "logger.cpp"
-#endif
+#include "cip.cpp"
+#include "files.cpp"
+#include "logger.cpp"
 
 logger logg;
 
@@ -64,6 +63,12 @@ server
       this->cur_thread_count = MIN_THREAD_COUNT;
 
       add_pfd(get_listener_socket(), POLLIN, 0);
+    }
+
+    void
+      handle_file()
+    {
+      
     }
 
     void
@@ -267,9 +272,7 @@ main(int argc, char *argv[])
 
     char msg[64];
     snprintf(msg, 64, "No port argument, running with default port %d", DEFAULT_PORT);
-#if CONFIG_LOG != CONFVAL_LOG_NONE
     logg.log(msg, LOG_WARN);
-#endif
   }else{
     uint16_t port_input;
     if(sscanf(argv[1], "%hi", &port_input) == 1){
@@ -277,17 +280,13 @@ main(int argc, char *argv[])
 
       char msg[64];
       snprintf(msg, 64, "Starting server with port %d", port_input);
-#if CONFIG_LOG != CONFVAL_LOG_NONE
       logg.log(msg, LOG_INFO);
-#endif
     } else {
       serv = new server(DEFAULT_PORT);
 
       char msg[64];
       snprintf(msg, 64, "Bad port argument, running with default port %d", DEFAULT_PORT);
-#if CONFIG_LOG != CONFVAL_LOG_NONE
       logg.log("Bad port argument, running with default port 1337", LOG_WARN);
-#endif
     }
   }
 
