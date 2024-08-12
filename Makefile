@@ -50,3 +50,4 @@ ninja: build/
 
 clean:
 	rm -rf build/
+	rm -rf tests/build/
