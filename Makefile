@@ -40,14 +40,14 @@ CXXFLAGS += -DCONFIG_THREAD_UPDATE_TIME_S=${CONFIG_THREAD_UPDATE_TIME_S}
 
 CXXFLAGS += -DCONFVAL_LOG_NONE=${CONFVAL_LOG_NONE}
 
-all: build/ ninja
+server:
+	CXXFLAGS="${CXXFLAGS}" ./build.sh server
 
-build/:
-	CXXFLAGS="${CXXFLAGS}" ./build.sh
-
-ninja: build/
-	ninja -C build/
+client:
+	CXXFLAGS="${CXXFLAGS}" ./build.sh client
 
 clean:
 	rm -rf build/
 	rm -rf tests/build/
+
+.PHONY: clean server client
