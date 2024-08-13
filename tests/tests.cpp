@@ -34,7 +34,14 @@ class tests{
   public:
       tests(void)
     {
-      file_test();
+    }
+
+    int
+      run(void)
+    {
+      int ret = 0;
+      ret = ret | file_test();
+      return ret;
     }
 
   private:
@@ -99,6 +106,7 @@ class tests{
 
       return ret;
     }
+
 };
 
 
@@ -106,5 +114,5 @@ int
 main(void)
 {
   tests test;
-  return 0;
+  return test.run();
 }
